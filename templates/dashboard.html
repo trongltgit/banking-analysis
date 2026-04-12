@@ -30,7 +30,7 @@
             overflow: hidden;
         }
 
-        /* LEFT PANEL - Chi tiết từng ngân hàng */
+        /* LEFT PANEL */
         .left-panel {
             width: 45%;
             background: rgba(15, 23, 42, 0.95);
@@ -107,6 +107,69 @@
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* PROGRESS TRACKING */
+        .analysis-progress {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .progress-header {
+            font-size: 14px;
+            color: #10b981;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        .bank-progress-item {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            border-left: 4px solid #3b82f6;
+            transition: all 0.3s;
+        }
+
+        .bank-progress-item.completed {
+            border-left-color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .bank-progress-item.error {
+            border-left-color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .progress-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .status-pending { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .status-crawling { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .status-analyzing { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
+        .status-done { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .status-error { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+        .progress-details {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #64748b;
+            padding-left: 36px;
+        }
 
         /* Bank Detail Cards */
         .bank-detail-card {
@@ -242,7 +305,7 @@
             margin-top: 4px;
         }
 
-        /* RIGHT PANEL - So sánh tổng thể */
+        /* RIGHT PANEL */
         .right-panel {
             width: 55%;
             padding: 24px;
@@ -418,28 +481,6 @@
             line-height: 1.8;
         }
 
-        .charts-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 24px;
-        }
-
-        .chart-box {
-            background: rgba(30, 41, 59, 0.6);
-            padding: 20px;
-            border-radius: 16px;
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .chart-title {
-            font-size: 13px;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 16px;
-        }
-
         .hidden { display: none !important; }
 
         .empty-state {
@@ -448,28 +489,24 @@
             color: #64748b;
         }
 
-        .loading-banks {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .loading-bank-item {
-            background: rgba(30, 41, 59, 0.4);
-            padding: 16px;
+        .error-display {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 20px;
             border-radius: 12px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
+            margin-bottom: 20px;
         }
 
-        .loading-indicator {
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(16, 185, 129, 0.3);
-            border-top-color: #10b981;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+        .error-display h3 {
+            color: #ef4444;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .error-display p {
+            color: #cbd5e1;
+            font-size: 14px;
+            line-height: 1.6;
         }
 
         @media (max-width: 1200px) {
@@ -505,7 +542,9 @@ https://www.vietcombank.com.vn/</textarea>
             <div class="empty-state">
                 <div style="font-size: 48px; margin-bottom: 16px;">🏦</div>
                 <p>Nhập URLs và click "Phân Tích Chuyên Sâu" để bắt đầu</p>
-                <p style="font-size: 12px; margin-top: 8px; opacity: 0.6;">AI sẽ phân tích từng ngân hàng chi tiết</p>
+                <p style="font-size: 12px; margin-top: 8px; opacity: 0.6;">
+                    AI sẽ phân tích từng ngân hàng chi tiết (crawl → AI extraction → strategy)
+                </p>
             </div>
         </div>
     </div>
@@ -517,14 +556,19 @@ https://www.vietcombank.com.vn/</textarea>
         <div id="strategyContainer">
             <div class="empty-state">
                 <div style="font-size: 48px; margin-bottom: 16px;">📈</div>
-                <p>Phân tích chiến lược so sánh sẽ hiển thị ở đây</p>
+                <p>Phân tích chiến lược so sánh sẽ hiển thị ở đây sau khi AI hoàn thành</p>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-let charts = {};
+let currentAnalysis = {
+    urls: [],
+    results: [],
+    completed: 0,
+    errors: []
+};
 
 async function analyze() {
     const btn = document.getElementById('analyzeBtn');
@@ -538,31 +582,24 @@ async function analyze() {
         return;
     }
 
+    // Reset state
+    currentAnalysis = {
+        urls: urls,
+        results: [],
+        completed: 0,
+        errors: []
+    };
+
     // Loading state
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Đang phân tích AI...';
+    btn.innerHTML = '<span class="spinner"></span> Khởi tạo AI Analysis...';
     
-    // Show loading in left panel
-    const banksContainer = document.getElementById('banksContainer');
-    banksContainer.innerHTML = `
-        <div class="loading-banks">
-            ${urls.map((url, i) => `
-                <div class="loading-bank-item">
-                    <div class="loading-indicator"></div>
-                    <div>
-                        <div style="font-weight: 600;">${url}</div>
-                        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
-                            ${i === 0 ? 'Đang crawl website...' : 'Đang chờ...'}
-                        </div>
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-    `;
-
+    // Hiển thị progress tracking
+    renderProgress();
+    
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 phút timeout
+        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 phút
 
         const res = await fetch('/analyze', {
             method: 'POST',
@@ -575,7 +612,7 @@ async function analyze() {
 
         if (!res.ok) {
             const errorData = await res.json().catch(() => ({}));
-            throw new Error(errorData.message || `Lỗi HTTP ${res.status}`);
+            throw new Error(errorData.message || `HTTP ${res.status}`);
         }
 
         const data = await res.json();
@@ -584,17 +621,38 @@ async function analyze() {
             throw new Error(data.message);
         }
 
+        // Cập nhật progress hoàn thành
+        currentAnalysis.completed = urls.length;
+        renderProgress();
+        
+        // Hiển thị kết quả
         renderAll(data);
         
     } catch (error) {
         console.error('Lỗi phân tích:', error);
+        
+        const banksContainer = document.getElementById('banksContainer');
         banksContainer.innerHTML = `
-            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 20px; border-radius: 12px;">
-                <h3 style="color: #ef4444; margin-bottom: 8px;">❌ Lỗi Phân Tích</h3>
-                <p style="color: #cbd5e1; font-size: 14px;">${error.message}</p>
-                <p style="color: #64748b; font-size: 12px; margin-top: 8px;">
-                    Vui lòng kiểm tra GROQ_API_KEY_BK và thử lại.
-                </p>
+            <div class="error-display">
+                <h3>❌ Phân Tích Thất Bại</h3>
+                <p>${error.message}</p>
+                ${error.message.includes('timeout') ? `
+                    <p style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+                        Phân tích chuyên sâu cần thời gian. Vui lòng thử với ít URL hơn (2-3 thay vì 4).
+                    </p>
+                ` : ''}
+                ${error.message.includes('rate limit') ? `
+                    <p style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+                        Groq API đang bận. Vui lòng đợi 30 giây và thử lại.
+                    </p>
+                ` : ''}
+            </div>
+        `;
+        
+        document.getElementById('strategyContainer').innerHTML = `
+            <div class="empty-state">
+                <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                <p>Không thể tạo chiến lược do lỗi phân tích</p>
             </div>
         `;
     } finally {
@@ -603,15 +661,63 @@ async function analyze() {
     }
 }
 
+function renderProgress() {
+    const container = document.getElementById('banksContainer');
+    const urls = currentAnalysis.urls;
+    
+    let html = `
+        <div class="analysis-progress">
+            <div class="progress-header">
+                🤖 AI Deep Analysis Progress 
+                <span style="color: #64748b; font-weight: normal;">
+                    (${currentAnalysis.completed}/${urls.length} hoàn thành)
+                </span>
+            </div>
+    `;
+    
+    urls.forEach((url, i) => {
+        const isCompleted = i < currentAnalysis.completed;
+        const statusClass = isCompleted ? 'completed' : '';
+        const statusIcon = isCompleted ? '✓' : (i === currentAnalysis.completed ? '●' : '○');
+        const statusIconClass = isCompleted ? 'status-done' : (i === currentAnalysis.completed ? 'status-analyzing' : 'status-pending');
+        const statusText = isCompleted ? 'Hoàn thành' : (i === currentAnalysis.completed ? 'Đang phân tích AI...' : 'Đang chờ...');
+        
+        html += `
+            <div class="bank-progress-item ${statusClass}" id="progress-${i}">
+                <div class="progress-status">
+                    <div class="status-icon ${statusIconClass}">${statusIcon}</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #e2e8f0; font-size: 14px;">${url}</div>
+                        <div style="font-size: 12px; color: #64748b; margin-top: 2px;">${statusText}</div>
+                    </div>
+                </div>
+                ${i === currentAnalysis.completed ? `
+                    <div class="progress-details">
+                        <span class="spinner" style="width: 12px; height: 12px; margin-right: 6px;"></span>
+                        Crawl website → Extract content → AI deep analysis → Generate insights
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
 function renderAll(data) {
     const results = data.results || [];
     const strategy = data.strategy || {};
+    const errors = data.errors || [];
     
-    renderBankDetails(results);
+    // Render bank details
+    renderBankDetails(results, errors);
+    
+    // Render strategy
     renderStrategy(strategy, results);
 }
 
-function renderBankDetails(results) {
+function renderBankDetails(results, errors) {
     const container = document.getElementById('banksContainer');
     container.innerHTML = '';
 
@@ -620,10 +726,33 @@ function renderBankDetails(results) {
         const strategic = a.strategic_analysis || {};
         const competitive = a.competitive_assessment || {};
         
+        // Kiểm tra nếu là error result
+        const isError = result.extraction_quality === 'error' || (a.bank_name && a.bank_name.includes('LỖI:'));
+        
+        if (isError) {
+            const errorCard = document.createElement('div');
+            errorCard.className = 'bank-detail-card';
+            errorCard.style.borderLeftColor = '#ef4444';
+            errorCard.innerHTML = `
+                <div class="bank-header">
+                    <div>
+                        <div class="bank-title" style="color: #ef4444;">${a.bank_name || 'Lỗi Phân Tích'}</div>
+                    </div>
+                    <span class="quality-badge quality-error">ERROR</span>
+                </div>
+                <div class="strategic-box" style="border-left: 3px solid #ef4444;">
+                    <h4 style="color: #ef4444;">Chi tiết lỗi</h4>
+                    <p>${(competitive.weaknesses || []).join(', ') || 'Không thể phân tích ngân hàng này'}</p>
+                </div>
+            `;
+            container.appendChild(errorCard);
+            return;
+        }
+        
         // Xác định quality class
         const quality = result.extraction_quality || 'limited';
         const qualityClass = `quality-${quality}`;
-        const qualityText = quality === 'deep' ? 'Deep Analysis' : quality === 'good' ? 'Good' : quality === 'limited' ? 'Limited' : 'Error';
+        const qualityText = quality === 'deep' ? 'Deep Analysis' : quality === 'good' ? 'Good' : 'Limited';
         
         // Group products by category
         const productsByCategory = {};
@@ -633,7 +762,7 @@ function renderBankDetails(results) {
             productsByCategory[cat].push(p);
         });
         
-        // Category colors
+        // Category mapping
         const catColors = {
             'SAVINGS': 'tag-savings',
             'LOAN': 'tag-loan',
@@ -685,28 +814,32 @@ function renderBankDetails(results) {
             </div>
             
             ${Object.keys(productsByCategory).length > 0 ? `
-                <div class="section-title">📦 Danh Mục Sản Phẩm</div>
+                <div class="section-title">📦 Danh Mục Sản Phẩm Chi Tiết</div>
                 ${Object.entries(productsByCategory).map(([cat, products]) => `
                     <div style="margin-bottom: 12px;">
-                        <div style="font-size: 12px; color: #64748b; margin-bottom: 6px; text-transform: uppercase;">${catNames[cat] || cat} (${products.length})</div>
+                        <div style="font-size: 12px; color: #64748b; margin-bottom: 6px; text-transform: uppercase;">
+                            ${catNames[cat] || cat} (${products.length} sản phẩm)
+                        </div>
                         <div class="product-list">
                             ${products.map(p => `
-                                <span class="product-tag ${catColors[cat] || 'tag-other'}" title="${(p.features || []).join(', ')}">
+                                <span class="product-tag ${catColors[cat] || 'tag-other'}" 
+                                      title="${(p.features || []).join(', ')}">
                                     ${p.name || p}
                                 </span>
                             `).join('')}
                         </div>
                     </div>
                 `).join('')}
-            ` : ''}
+            ` : '<div class="section-title">📦 Không tìm thấy sản phẩm</div>'}
             
             ${(a.promotions || []).length > 0 ? `
                 <div class="section-title">🎁 Chương Trình Khuyến Mãi</div>
                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                    ${a.promotions.slice(0, 3).map(p => `
+                    ${a.promotions.slice(0, 5).map(p => `
                         <div style="background: rgba(245, 158, 11, 0.1); padding: 10px 14px; border-radius: 8px; border-left: 3px solid #f59e0b;">
                             <div style="font-weight: 600; color: #fbbf24; font-size: 13px;">${p.name || p}</div>
                             ${p.benefit ? `<div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">${p.benefit}</div>` : ''}
+                            ${p.target_segment ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">Đối tượng: ${p.target_segment}</div>` : ''}
                         </div>
                     `).join('')}
                 </div>
@@ -715,8 +848,17 @@ function renderBankDetails(results) {
             ${strategic.positioning ? `
                 <div class="section-title">🎯 Chiến Lược Thương Hiệu</div>
                 <div class="strategic-box">
-                    <h4>Định vị</h4>
+                    <h4>Định vị thị trường</h4>
                     <p>${strategic.positioning}</p>
+                </div>
+            ` : ''}
+            
+            ${(strategic.target_segments || []).length > 0 ? `
+                <div class="strategic-box">
+                    <h4>Phân khúc khách hàng mục tiêu</h4>
+                    <ul>
+                        ${strategic.target_segments.map(s => `<li>${s}</li>`).join('')}
+                    </ul>
                 </div>
             ` : ''}
             
@@ -729,21 +871,30 @@ function renderBankDetails(results) {
                 </div>
             ` : ''}
             
-            ${(competitive.strengths || []).length > 0 ? `
+            ${(competitive.strengths || []).length > 0 || (competitive.weaknesses || []).length > 0 ? `
                 <div class="section-title">💪 Đánh Giá Cạnh Tranh</div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                     <div class="strategic-box" style="border-left: 3px solid #10b981;">
-                        <h4 style="color: #10b981;">Điểm Mạnh</h4>
+                        <h4 style="color: #10b981;">Điểm Mạnh (${competitive.strengths?.length || 0})</h4>
                         <ul>
-                            ${competitive.strengths.map(s => `<li>${s}</li>`).join('')}
+                            ${(competitive.strengths || []).map(s => `<li>${s}</li>`).join('')}
                         </ul>
                     </div>
                     <div class="strategic-box" style="border-left: 3px solid #ef4444;">
-                        <h4 style="color: #ef4444;">Điểm Yếu</h4>
+                        <h4 style="color: #ef4444;">Điểm Yếu (${competitive.weaknesses?.length || 0})</h4>
                         <ul>
                             ${(competitive.weaknesses || []).map(w => `<li>${w}</li>`).join('')}
                         </ul>
                     </div>
+                </div>
+            ` : ''}
+            
+            ${competitive.competitive_threat_level ? `
+                <div style="margin-top: 12px; padding: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; text-align: center;">
+                    <span style="color: #64748b; font-size: 12px;">Mức độ đe dọa cạnh tranh: </span>
+                    <span style="color: ${competitive.competitive_threat_level === 'High' ? '#ef4444' : competitive.competitive_threat_level === 'Medium' ? '#f59e0b' : '#10b981'}; font-weight: 600;">
+                        ${competitive.competitive_threat_level}
+                    </span>
                 </div>
             ` : ''}
             
@@ -755,6 +906,15 @@ function renderBankDetails(results) {
                             <span style="color: #64748b;">${key}:</span>
                             <span style="color: #10b981; font-weight: 600; margin-left: 4px;">${val}</span>
                         </div>
+                    `).join('')}
+                </div>
+            ` : ''}
+            
+            ${(a.digital_capabilities || []).length > 0 ? `
+                <div class="section-title">💻 Khả Năng Số Hóa</div>
+                <div class="product-list">
+                    ${a.digital_capabilities.map(d => `
+                        <span class="product-tag tag-digital">${d}</span>
                     `).join('')}
                 </div>
             ` : ''}
@@ -776,7 +936,20 @@ function renderStrategy(strategy, results) {
         }
     }
     
-    // Competitive Ranking
+    // Check if strategy is empty or error
+    if (!strategy || strategy.executive_summary?.includes('Error') || strategy.executive_summary?.includes('error')) {
+        container.innerHTML = `
+            <div class="error-display">
+                <h3>⚠️ Chiến Lược Tổng Thể</h3>
+                <p>${strategy?.executive_summary || 'Không thể tạo phân tích chiến lược'}</p>
+                <p style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+                    Phân tích từng ngân hàng bên trái vẫn hợp lệ. Có thể retry để tạo chiến lược tổng thể.
+                </p>
+            </div>
+        `;
+        return;
+    }
+    
     const ranking = strategy.competitive_ranking || [];
     const detailedAnalysis = strategy.detailed_competitor_analysis || [];
     const recommendations = strategy.strategic_recommendations || {};
@@ -787,7 +960,7 @@ function renderStrategy(strategy, results) {
     if (strategy.executive_summary) {
         html += `
             <div class="strategy-overview">
-                <h3>📋 Tóm Tắt Chiến Lược</h3>
+                <h3>📋 Tóm Tắt Chiến Lược Tổng Thể</h3>
                 <p>${strategy.executive_summary}</p>
             </div>
         `;
@@ -804,6 +977,7 @@ function renderStrategy(strategy, results) {
                         <div class="rank-info">
                             <div class="rank-bank-name">${r.bank}</div>
                             <div class="rank-position">${r.position} • ${r.key_strength || ''}</div>
+                            ${r.analysis ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${r.analysis}</div>` : ''}
                         </div>
                         <div class="rank-score">
                             <div class="score-value">${r.score || '-'}</div>
@@ -824,55 +998,88 @@ function renderStrategy(strategy, results) {
                 
                 <div class="strategy-section">
                     <h4>Chiến Lược Sản Phẩm</h4>
-                    <p>${comp.product_strategy || 'Chưa có dữ liệu'}</p>
+                    <p>${comp.product_strategy || 'Chưa có dữ liệu chi tiết'}</p>
                 </div>
                 
                 <div class="strategy-section">
-                    <h4>Chiến Lược Giá</h4>
-                    <p>${comp.pricing_strategy || 'Chưa có dữ liệu'}</p>
+                    <h4>Chiến Lược Giá & Định Vị</h4>
+                    <p>${comp.pricing_strategy || 'Chưa có dữ liệu chi tiết'}</p>
                 </div>
                 
                 <div class="strategy-section">
                     <h4>Chiến Lược Phân Phối</h4>
-                    <p>${comp.distribution_strategy || 'Chưa có dữ liệu'}</p>
+                    <p>${comp.distribution_strategy || 'Chưa có dữ liệu chi tiết'}</p>
                 </div>
                 
                 <div class="strategy-section">
-                    <h4>Chiến Lược Số</h4>
-                    <p>${comp.digital_strategy || 'Chưa có dữ liệu'}</p>
+                    <h4>Chiến Lược Chuyển Đổi Số</h4>
+                    <p>${comp.digital_strategy || 'Chưa có dữ liệu chi tiết'}</p>
                 </div>
                 
                 <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 16px;">
                     <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
-                        <div style="font-size: 20px; font-weight: 700; color: #3b82f6;">${scores.product_breadth || '-'}</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #3b82f6;">${scores.product_breadth || '-'}/10</div>
                         <div style="font-size: 10px; color: #64748b; text-transform: uppercase; margin-top: 4px;">Sản phẩm</div>
                     </div>
                     <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
-                        <div style="font-size: 20px; font-weight: 700; color: #8b5cf6;">${scores.digital_capability || '-'}</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #8b5cf6;">${scores.digital_capability || '-'}/10</div>
                         <div style="font-size: 10px; color: #64748b; text-transform: uppercase; margin-top: 4px;">Digital</div>
                     </div>
                     <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
-                        <div style="font-size: 20px; font-weight: 700; color: #10b981;">${scores.pricing_competitiveness || '-'}</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #10b981;">${scores.pricing_competitiveness || '-'}/10</div>
                         <div style="font-size: 10px; color: #64748b; text-transform: uppercase; margin-top: 4px;">Giá cả</div>
                     </div>
                     <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
-                        <div style="font-size: 20px; font-weight: 700; color: #f59e0b;">${scores.brand_strength || '-'}</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #f59e0b;">${scores.brand_strength || '-'}/10</div>
                         <div style="font-size: 10px; color: #64748b; text-transform: uppercase; margin-top: 4px;">Thương hiệu</div>
                     </div>
                     <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
-                        <div style="font-size: 20px; font-weight: 700; color: #ef4444;">${scores.overall || '-'}</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #ef4444;">${scores.overall || '-'}/10</div>
                         <div style="font-size: 10px; color: #64748b; text-transform: uppercase; margin-top: 4px;">Tổng</div>
                     </div>
                 </div>
+                
+                ${(comp.key_threats || []).length > 0 ? `
+                    <div style="margin-top: 12px; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
+                        <span style="color: #ef4444; font-size: 12px; font-weight: 600;">⚠️ Mối đe dọa: </span>
+                        <span style="color: #cbd5e1; font-size: 12px;">${comp.key_threats.join(', ')}</span>
+                    </div>
+                ` : ''}
+                
+                ${(comp.key_opportunities || []).length > 0 ? `
+                    <div style="margin-top: 8px; padding: 10px; background: rgba(16, 185, 129, 0.1); border-radius: 8px;">
+                        <span style="color: #10b981; font-size: 12px; font-weight: 600;">💡 Cơ hội: </span>
+                        <span style="color: #cbd5e1; font-size: 12px;">${comp.key_opportunities.join(', ')}</span>
+                    </div>
+                ` : ''}
             </div>
         `;
     });
+    
+    // Product Comparison Matrix
+    if (strategy.product_comparison_matrix) {
+        const matrix = strategy.product_comparison_matrix;
+        html += `
+            <div class="competitor-deep-dive">
+                <h3 style="color: #8b5cf6;">📊 So Sánh Sản Phẩm Theo Hạng Mục</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    ${Object.entries(matrix).map(([category, data]) => `
+                        <div style="background: rgba(15, 23, 42, 0.6); padding: 14px; border-radius: 10px; border-left: 3px solid #8b5cf6;">
+                            <div style="font-size: 12px; color: #8b5cf6; text-transform: uppercase; margin-bottom: 6px;">${category}</div>
+                            <div style="font-weight: 600; color: #e2e8f0; margin-bottom: 4px;">Leader: ${data.leader || 'N/A'}</div>
+                            <div style="font-size: 12px; color: #94a3b8;">${data.gap_analysis || ''}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
     
     // Strategic Recommendations
     if (recommendations.overall_strategy) {
         html += `
             <div class="competitor-deep-dive" style="border: 1px solid rgba(16, 185, 129, 0.3);">
-                <h3 style="color: #10b981;">🎯 Chiến Lược Đề Xuất</h3>
+                <h3 style="color: #10b981;">🎯 Chiến Lược Kinh Doanh Đề Xuất</h3>
                 
                 <div class="strategy-section">
                     <h4>Chiến Lược Tổng Thể</h4>
@@ -888,8 +1095,22 @@ function renderStrategy(strategy, results) {
                 
                 ${recommendations.pricing_strategy ? `
                     <div class="strategy-section">
-                        <h4>Chiến Lược Giá</h4>
+                        <h4>Chiến Lược Giá & Định Vị</h4>
                         <p>${recommendations.pricing_strategy}</p>
+                    </div>
+                ` : ''}
+                
+                ${recommendations.distribution_strategy ? `
+                    <div class="strategy-section">
+                        <h4>Chiến Lược Phân Phối</h4>
+                        <p>${recommendations.distribution_strategy}</p>
+                    </div>
+                ` : ''}
+                
+                ${recommendations.digital_strategy ? `
+                    <div class="strategy-section">
+                        <h4>Chiến Lược Chuyển Đổi Số</h4>
+                        <p>${recommendations.digital_strategy}</p>
                     </div>
                 ` : ''}
             </div>
@@ -900,7 +1121,7 @@ function renderStrategy(strategy, results) {
     if (recommendations.implementation_roadmap && recommendations.implementation_roadmap.length > 0) {
         html += `
             <div class="competitor-deep-dive">
-                <h3 style="color: #8b5cf6;">📅 Lộ Trình Thực Thi</h3>
+                <h3 style="color: #f59e0b;">📅 Lộ Trình Thực Thi Chiến Lược</h3>
                 <div class="roadmap-timeline">
                     ${recommendations.implementation_roadmap.map(phase => `
                         <div class="roadmap-phase">
@@ -908,8 +1129,8 @@ function renderStrategy(strategy, results) {
                             <ul>
                                 ${(phase.actions || []).map(a => `<li>${a}</li>`).join('')}
                             </ul>
-                            ${phase.milestones ? `<div style="margin-top: 8px; font-size: 12px; color: #10b981;">🎯 ${phase.milestones}</div>` : ''}
-                            ${phase.investment_required ? `<div style="margin-top: 4px; font-size: 12px; color: #f59e0b;">💰 ${phase.investment_required}</div>` : ''}
+                            ${phase.milestones ? `<div style="margin-top: 8px; font-size: 12px; color: #10b981;">🎯 KPI: ${phase.milestones}</div>` : ''}
+                            ${phase.investment_required ? `<div style="margin-top: 4px; font-size: 12px; color: #f59e0b;">💰 Đầu tư: ${phase.investment_required}</div>` : ''}
                         </div>
                     `).join('')}
                 </div>
@@ -921,20 +1142,32 @@ function renderStrategy(strategy, results) {
     if (strategy.market_opportunities && strategy.market_opportunities.length > 0) {
         html += `
             <div class="competitor-deep-dive">
-                <h3 style="color: #f59e0b;">💡 Cơ Hội Thị Trường</h3>
+                <h3 style="color: #ec4899;">💡 Cơ Hội Thị Trường Phát Hiện</h3>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     ${strategy.market_opportunities.map(opp => `
-                        <div style="background: rgba(245, 158, 11, 0.1); padding: 16px; border-radius: 12px; border-left: 4px solid #f59e0b;">
-                            <div style="font-weight: 600; color: #fbbf24; margin-bottom: 6px;">${opp.opportunity}</div>
+                        <div style="background: rgba(236, 72, 153, 0.1); padding: 16px; border-radius: 12px; border-left: 4px solid #ec4899;">
+                            <div style="font-weight: 600; color: #f472b6; margin-bottom: 6px;">${opp.opportunity}</div>
                             <div style="font-size: 13px; color: #94a3b8; margin-bottom: 8px;">${opp.rationale}</div>
                             <div style="display: flex; gap: 16px; font-size: 12px;">
-                                <span style="color: #64748b;">Doanh thu: <span style="color: #10b981;">${opp.potential_revenue || 'N/A'}</span></span>
-                                <span style="color: #64748b;">Độ khó: <span style="color: #f59e0b;">${opp.difficulty || 'N/A'}</span></span>
-                                <span style="color: #64748b;">Ưu tiên: <span style="color: #ef4444;">${opp.priority || 'N/A'}</span></span>
+                                <span style="color: #64748b;">Doanh thu: <span style="color: #10b981; font-weight: 600;">${opp.potential_revenue || 'N/A'}</span></span>
+                                <span style="color: #64748b;">Độ khó: <span style="color: ${opp.difficulty === 'Dễ' ? '#10b981' : opp.difficulty === 'Khó' ? '#ef4444' : '#f59e0b'}; font-weight: 600;">${opp.difficulty || 'N/A'}</span></span>
+                                <span style="color: #64748b;">Ưu tiên: <span style="color: ${opp.priority === 'Cao' ? '#ef4444' : '#f59e0b'}; font-weight: 600;">${opp.priority || 'N/A'}</span></span>
                             </div>
                         </div>
                     `).join('')}
                 </div>
+            </div>
+        `;
+    }
+    
+    // Risk Mitigation
+    if (strategy.risk_mitigation && strategy.risk_mitigation.length > 0) {
+        html += `
+            <div class="competitor-deep-dive" style="border: 1px solid rgba(239, 68, 68, 0.3);">
+                <h3 style="color: #ef4444;">⚠️ Rủi Ro & Giảm Thiểu</h3>
+                <ul style="margin-left: 20px; color: #cbd5e1; font-size: 14px; line-height: 1.8;">
+                    ${strategy.risk_mitigation.map(r => `<li>${r}</li>`).join('')}
+                </ul>
             </div>
         `;
     }
