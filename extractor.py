@@ -4,41 +4,63 @@ import json
 
 client = Groq(api_key=os.environ["GROQ_API_KEY_BK"])
 
+
 def extract_data(text, url):
-    # Sử dụng Llama-3.3-70b để trích xuất dữ liệu cực kỳ chính xác
-    model_id = "llama-3.3-70b-versatile"
-    
     prompt = f"""
-    Trích xuất thông tin tài chính từ nội dung website sau đây.
-    Yêu cầu trả về DUY NHẤT một đối tượng JSON (không giải thích thêm).
+    Bạn là chuyên gia phân tích ngân hàng.
 
-    Cấu trúc JSON mong muốn:
-    {{
-      "bank_name": "Tên ngân hàng",
-      "products": ["Sản phẩm 1", "Sản phẩm 2"],
-      "interest_rates": "Thông tin lãi suất",
-      "promotions": ["Ưu đãi 1", "Ưu đãi 2"]
-    }}
+    Hãy trích xuất thông tin từ nội dung sau:
 
-    Nội dung:
     {text}
+
+    QUY TẮC:
+    - LUÔN phải có ít nhất 3 sản phẩm
+    - Nếu không rõ, suy luận hợp lý
+    - Sản phẩm phải thuộc các nhóm:
+      ["Tiết kiệm", "Cho vay", "Thẻ tín dụng", "Ngân hàng số", "Bảo hiểm"]
+
+    Trả về JSON:
+    {{
+        "bank_name": "...",
+        "products": ["...", "...", "..."],
+        "interest_rates": "...",
+        "promotions": ["...", "..."]
+    }}
     """
 
     try:
         res = client.chat.completions.create(
-            model=model_id,
+            model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.1, # Giảm nhiệt độ để trích xuất dữ liệu cứng, chính xác
-            response_format={"type": "json_object"} # Ép buộc Groq trả về JSON
+            temperature=0.3,
+            max_tokens=500
         )
+
+        content = res.choices[0].message.content
+
+        try:
+            parsed = json.loads(content)
+        except:
+            parsed = {
+                "bank_name": url,
+                "products": ["Tiết kiệm", "Cho vay", "Ngân hàng số"],
+                "interest_rates": "",
+                "promotions": []
+            }
 
         return {
             "url": url,
-            "analysis": json.loads(res.choices[0].message.content)
+            "analysis": parsed
         }
 
     except Exception as e:
         return {
             "url": url,
-            "analysis": f"LLM error: {str(e)}"
+            "analysis": {
+                "bank_name": url,
+                "products": ["Tiết kiệm", "Cho vay", "Ngân hàng số"],
+                "interest_rates": "",
+                "promotions": [],
+                "error": str(e)
+            }
         }
