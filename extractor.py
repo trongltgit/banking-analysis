@@ -1,22 +1,48 @@
-from groq import Groq
 import os
 import json
 import re
 
-client = Groq(api_key=os.environ.get("GROQ_API_KEY_BK", ""))
+# Fix: Import groq đúng cách cho version mới
+try:
+    from groq import Groq
+except ImportError:
+    from groq import Client as Groq
+
+def get_groq_client():
+    """Khởi tạo Groq client an toàn"""
+    api_key = os.environ.get("GROQ_API_KEY_BK")
+    
+    if not api_key:
+        print("⚠️ WARNING: GROQ_API_KEY_BK not set")
+        return None
+    
+    try:
+        # Thử cách 1: Standard initialization
+        client = Groq(api_key=api_key)
+        return client
+    except TypeError as e:
+        if "proxies" in str(e):
+            # Fix: Khởi tạo không dùng proxies
+            import httpx
+            http_client = httpx.Client(follow_redirects=True)
+            client = Groq(api_key=api_key, http_client=http_client)
+            return client
+        raise
+    except Exception as e:
+        print(f"❌ Groq client error: {e}")
+        return None
 
 def clean_json(text):
     """Trích xuất JSON từ text"""
     if not text:
         return None
     
-    # Thử parse trực tiếp
     try:
         return json.loads(text)
     except:
         pass
     
-    # Tìm JSON trong markdown code block
+    # Tìm JSON trong code blocks
     patterns = [
         r'```json\s*(.*?)\s*```',
         r'```\s*(.*?)\s*```',
@@ -34,56 +60,57 @@ def clean_json(text):
     return None
 
 def extract_data(text, url):
-    """Trích xuất dữ liệu ngân hàng với AI"""
+    """Trích xuất dữ liệu ngân hàng với Groq AI"""
     
-    # Kiểm tra API key
-    if not os.environ.get("GROQ_API_KEY_BK"):
+    client = get_groq_client()
+    
+    if not client:
         return {
             "url": url,
             "analysis": {
-                "bank_name": "API Key Missing",
+                "bank_name": url.split("//")[-1].split("/")[0].replace("www.", "").upper(),
+                "bank_code": None,
                 "products": [],
                 "interest_rates": {},
                 "promotions": [],
                 "digital_capabilities": [],
-                "positioning": "Configuration error",
+                "positioning": "API not configured",
                 "strengths": [],
-                "weaknesses": ["GROQ_API_KEY_BK not set"]
+                "weaknesses": ["GROQ_API_KEY_BK not set or invalid"]
             },
             "extraction_quality": "error"
         }
-    
-    prompt = f"""Analyze this bank website content and extract structured data.
+
+    prompt = f"""Phân tích nội dung website ngân hàng và trích xuất dữ liệu có cấu trúc.
 
 URL: {url}
-CONTENT: {text[:6000]}
+NỘI DUNG: {text[:5000]}
 
-Extract ONLY factual information into this JSON format:
+Trích xuất thông tin vào JSON format:
 {{
-    "bank_name": "Full bank name",
-    "bank_code": "Stock code if mentioned (VCB, TCB, etc)",
+    "bank_name": "Tên ngân hàng đầy đủ",
+    "bank_code": "Mã chứng khoán nếu có (VCB, TCB, BID...)",
     "products": [
-        {{"category": "SAVINGS/LOAN/CARD/DIGITAL/INSURANCE/INVESTMENT", "name": "Product name", "features": ["feature1"]}}
+        {{"category": "SAVINGS/LOAN/CARD/DIGITAL/INSURANCE", "name": "Tên sản phẩm", "features": ["đặc điểm"]}}
     ],
-    "interest_rates": {{"savings": "X%", "loan": "Y%"}},
-    "promotions": [{{"name": " Promo name", "benefit": "Description"}}],
-    "digital_capabilities": ["Mobile app", "Internet banking"],
-    "positioning": "Bank's market positioning",
-    "strengths": ["Strength 1"],
-    "weaknesses": ["Weakness 1"]
+    "interest_rates": {{"savings": "X%/năm", "loan": "Y%/năm"}},
+    "promotions": [{{"name": "Tên CTKM", "benefit": "Lợi ích"}}],
+    "digital_capabilities": ["App mobile", "Internet banking"],
+    "positioning": "Định vị thương hiệu",
+    "strengths": ["Điểm mạnh 1"],
+    "weaknesses": ["Điểm yếu 1"]
 }}
 
-Rules:
-- Only include data visible in the content
-- Empty array [] if no data
-- No made-up interest rates
-- Valid JSON only, no markdown"""
+Quy tắc:
+- Chỉ dùng dữ liệu có thực từ nội dung
+- Không bịa đặt lãi suất
+- Trả về JSON hợp lệ, không markdown"""
 
     try:
         res = client.chat.completions.create(
-            model="llama-3.1-8b-instant",  # Model ổn định, nhanh
+            model="llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": "You extract banking data into valid JSON. No explanations, only JSON."},
+                {"role": "system", "content": "Trả về JSON hợp lệ. Không giải thích."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.1,
@@ -94,17 +121,16 @@ Rules:
         parsed = clean_json(content)
 
         if not parsed:
-            # Retry với prompt đơn giản hơn
-            retry_prompt = f"""Fix this into valid JSON: {content}
-Output ONLY JSON, no other text."""
-            
-            res2 = client.chat.completions.create(
+            # Retry
+            retry = client.chat.completions.create(
                 model="llama-3.1-8b-instant",
-                messages=[{"role": "user", "content": retry_prompt}],
+                messages=[
+                    {"role": "user", "content": f"Sửa thành JSON hợp lệ: {content}"}
+                ],
                 temperature=0,
                 max_tokens=1000
             )
-            parsed = clean_json(res2.choices[0].message.content.strip())
+            parsed = clean_json(retry.choices[0].message.content.strip())
 
         if not parsed:
             parsed = {
@@ -114,9 +140,9 @@ Output ONLY JSON, no other text."""
                 "interest_rates": {},
                 "promotions": [],
                 "digital_capabilities": [],
-                "positioning": "Could not parse AI response",
+                "positioning": "Parse error",
                 "strengths": [],
-                "weaknesses": ["AI extraction failed"]
+                "weaknesses": ["JSON parsing failed"]
             }
 
         # Normalize
@@ -134,6 +160,7 @@ Output ONLY JSON, no other text."""
         }
 
     except Exception as e:
+        print(f"❌ Extraction error for {url}: {e}")
         return {
             "url": url,
             "analysis": {
@@ -143,10 +170,9 @@ Output ONLY JSON, no other text."""
                 "interest_rates": {},
                 "promotions": [],
                 "digital_capabilities": [],
-                "positioning": "Extraction error",
+                "positioning": "Error",
                 "strengths": [],
                 "weaknesses": [str(e)[:100]]
             },
-            "extraction_quality": "error",
-            "error": str(e)[:100]
+            "extraction_quality": "error"
         }
