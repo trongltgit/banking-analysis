@@ -1,46 +1,50 @@
 from groq import Groq
 import os
-import json
 
-api_key = os.environ["GROQ_API_KEY_BK"]
-client = Groq(api_key=api_key)
+client = Groq(api_key=os.environ["GROQ_API_KEY_BK"])
+
+# 🔥 MODEL MỚI (ổn định hiện tại)
+MODEL = "llama-3.1-70b-versatile"
 
 
 def analyze_strategy(results):
     try:
-        data_str = json.dumps(results, indent=2, ensure_ascii=False)
-
         prompt = f"""
-Bạn là chuyên gia chiến lược ngân hàng.
+You are a senior banking strategy consultant.
 
-Dữ liệu:
-{data_str}
+Analyze competitor banks data:
 
-Phân tích:
+{results}
 
-1. Bank nào dẫn đầu từng mảng
-2. Insight chiến lược
-3. Điểm mạnh/yếu (có lý do)
-4. Gap thị trường
-5. 3 chiến lược cụ thể
-
-Format:
-
-## 🏆 Leader
-## 🔍 Insight
-## ⚖️ Strength/Weakness
-## 🚨 Gap
-## 🚀 Strategy
+Return STRICT JSON ONLY:
+{{
+  "insights": [
+    "insight 1",
+    "insight 2",
+    "insight 3"
+  ],
+  "strength_leader": "bank name",
+  "weakness_leader": "bank name",
+  "recommendations": [
+    "strategy 1",
+    "strategy 2",
+    "strategy 3"
+  ]
+}}
 """
 
         res = client.chat.completions.create(
-            model="mixtral-8x7b-32768",
+            model=MODEL,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
+            temperature=0.2,
             max_tokens=1200
         )
 
         return res.choices[0].message.content
 
     except Exception as e:
-        return f"Strategy error: {str(e)}"
+        return {
+            "error": str(e),
+            "insights": [],
+            "recommendations": []
+        }
