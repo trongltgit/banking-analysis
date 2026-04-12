@@ -9,7 +9,8 @@ from extractor import extract_data
 from llm import analyze_strategy
 
 app = Flask(__name__)
-CORS(app)
+# CORS cho phép tất cả origins trong development
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route("/")
 def home():
@@ -17,10 +18,10 @@ def home():
 
 @app.route("/health")
 def health():
-    return {"status": "ok", "version": "2.0-pro"}
+    return {"status": "ok", "version": "2.1-pro"}
 
 def safe_analysis(item):
-    """Normalize data để UI không bị chết"""
+    """Normalize data"""
     a = item.get("analysis", {})
     
     return {
@@ -48,39 +49,43 @@ def analyze():
 
         results = []
         print(f"\n{'='*60}")
-        print(f"🚀 STARTING DEEP ANALYSIS FOR {len(urls)} BANKS")
+        print(f"🚀 DEEP ANALYSIS: {len(urls)} BANKS")
         print(f"{'='*60}\n")
 
         for idx, url in enumerate(urls, 1):
-            print(f"\n[{idx}/{len(urls)}] 🔍 Processing: {url}")
+            print(f"\n[{idx}/{len(urls)}] 🔍 {url}")
             
             try:
-                # Crawl with enhanced extraction
+                # Crawl
                 raw = crawl_website(url)
-                print(f"      📄 Crawled {len(raw)} chars")
+                if raw.startswith("ERROR_CRAWL"):
+                    raise Exception(raw)
                 
-                # Deep AI extraction
+                print(f"      📄 {len(raw)} chars crawled")
+                
+                # AI Extraction
                 extracted = extract_data(raw, url)
                 quality = extracted.get("extraction_quality", "unknown")
-                print(f"      🤖 Extraction quality: {quality}")
-                
                 product_count = len(extracted.get("analysis", {}).get("products", []))
-                print(f"      📦 Products found: {product_count}")
+                
+                print(f"      🤖 Quality: {quality} | 📦 Products: {product_count}")
 
             except Exception as e:
-                print(f"      ❌ Error: {str(e)}")
+                print(f"      ❌ Error: {str(e)[:100]}")
+                # Fallback data
+                domain = url.split("//")[-1].split("/")[0].replace("www.", "").upper()
                 extracted = {
                     "url": url,
                     "analysis": {
-                        "bank_name": url.split("//")[-1].split("/")[0].replace("www.", "").upper(),
+                        "bank_name": domain,
                         "bank_code": None,
                         "products": [],
                         "interest_rates": {},
                         "promotions": [],
                         "digital_capabilities": [],
-                        "positioning": "Error in extraction",
+                        "positioning": "Extraction failed",
                         "strengths": [],
-                        "weaknesses": [f"Extraction failed: {str(e)}"]
+                        "weaknesses": [f"Crawl error: {str(e)[:50]}"]
                     },
                     "extraction_quality": "error"
                 }
@@ -88,15 +93,14 @@ def analyze():
             results.append(safe_analysis(extracted))
 
         print(f"\n{'='*60}")
-        print("🧠 GENERATING STRATEGIC ANALYSIS...")
+        print("🧠 GENERATING STRATEGY...")
         print(f"{'='*60}\n")
 
-        # AI Strategy Generation
+        # Strategy Generation
         try:
             strategy = analyze_strategy(results)
-            print("      ✅ Strategy generated successfully")
+            print("      ✅ Strategy generated")
             
-            # Ensure strategy is dict not string
             if isinstance(strategy, str):
                 try:
                     strategy = json.loads(strategy)
@@ -104,41 +108,39 @@ def analyze():
                     pass
                     
         except Exception as e:
-            print(f"      ❌ Strategy error: {str(e)}")
+            print(f"      ❌ Strategy error: {str(e)[:100]}")
             strategy = {
-                "error": str(e),
-                "executive_summary": "Strategy generation failed. Using fallback analysis.",
-                "competitive_landscape": {"market_leader": "Analysis pending"},
+                "executive_summary": "Strategy generation encountered an error. Using competitive analysis fallback.",
+                "competitive_landscape": {
+                    "market_leader": "Analysis requires retry",
+                    "challengers": []
+                },
                 "strategic_recommendations": {
-                    "immediate_actions": ["Review extraction quality", "Retry with specific competitor data"]
-                }
+                    "immediate_actions": [
+                        {"action": "Review competitor websites manually", "rationale": "Automated extraction limited"}
+                    ]
+                },
+                "error": str(e)[:100]
             }
 
-        response_data = {
+        return jsonify({
             "status": "success",
             "results": results,
             "strategy": strategy,
             "meta": {
                 "banks_analyzed": len(results),
                 "total_products": sum(len(r["products"]) for r in results),
-                "timestamp": "2026-04-12"
+                "analysis_date": "2026-04-12"
             }
-        }
-
-        print(f"\n{'='*60}")
-        print("✅ ANALYSIS COMPLETE")
-        print(f"{'='*60}\n")
-
-        return jsonify(response_data)
+        })
 
     except Exception as e:
         traceback.print_exc()
         return jsonify({
             "status": "error", 
-            "message": str(e),
-            "traceback": traceback.format_exc()
+            "message": str(e)
         }), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port)
