@@ -1,29 +1,30 @@
 from groq import Groq
 import os
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY_BK"))
+client = Groq(api_key=os.environ["GROQ_API_KEY_BK"])
+
 
 def extract_data(text, url):
+    prompt = f"""
+    Phân tích nội dung website ngân hàng:
+
+    - Tên ngân hàng
+    - Sản phẩm
+    - Lãi suất
+    - Ưu đãi
+
+    Nội dung:
+    {text}
+
+    Trả về JSON:
+    """
+
     try:
-        prompt = f"""
-        Tóm tắt website ngân hàng:
-
-        {text}
-
-        Trả JSON:
-        {{
-            "bank": "...",
-            "products": "...",
-            "interest": "...",
-            "offers": "..."
-        }}
-        """
-
         res = client.chat.completions.create(
-            model="llama-3.3-8b-instant",   # ✅ FIX
+            model="llama3-70b-8192",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-            max_tokens=300
+            temperature=0.3,
+            max_tokens=600
         )
 
         return {
