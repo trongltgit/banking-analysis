@@ -1,22 +1,30 @@
 import requests
+from bs4 import BeautifulSoup
 
 
 def crawl_website(url):
     try:
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            "User-Agent": "Mozilla/5.0"
         }
 
-        response = requests.get(url, headers=headers, timeout=10)
+        res = requests.get(url, headers=headers, timeout=5)
 
-        # Check HTTP status
-        if response.status_code != 200:
-            return f"Error: HTTP {response.status_code} when accessing {url}"
+        # 🔥 CHẶN HTML quá lớn
+        if len(res.text) > 500_000:  # >500KB
+            return res.text[:1000]
 
-        return response.text
+        soup = BeautifulSoup(res.text, "html.parser")
 
-    except requests.exceptions.Timeout:
-        return f"Error: Timeout when accessing {url}"
+        texts = []
 
-    except requests.exceptions.RequestException as e:
-        return f"Error crawling {url}: {str(e)}"
+        # 🔥 CHỈ lấy ít thôi
+        for tag in soup.find_all(["title", "h1", "h2"]):
+            txt = tag.get_text(strip=True)
+            if txt:
+                texts.append(txt)
+
+        return " ".join(texts)[:1000]
+
+    except Exception as e:
+        return f"Error: {str(e)}"
