@@ -28,70 +28,39 @@ def analyze():
         urls = data.get("urls", [])
 
         if not urls:
-            return jsonify({
-                "status": "error",
-                "message": "No URLs provided"
-            }), 400
-
-        # 🔥 CLEAN INPUT
-        urls = [u.strip() for u in urls if u.strip()]
+            return jsonify({"status": "error", "message": "No URLs"}), 400
 
         results = []
 
-        # =========================
-        # PROCESS DYNAMIC (NO LIMIT)
-        # =========================
         for idx, url in enumerate(urls):
+            print(f"[{idx+1}/{len(urls)}] Processing:", url)
+
             try:
-                print(f"[{idx+1}/{len(urls)}] Processing: {url}")
-
                 raw = crawl_website(url)
-
-                # 🔥 truncate để bảo vệ RAM + LLM
                 raw = raw[:2000]
 
                 extracted = extract_data(raw, url)
 
-            except Exception as inner_err:
+            except Exception as e:
                 extracted = {
-                    "url": url,
-                    "analysis": {
-                        "bank_name": url,
-                        "products": [],
-                        "interest_rates": "",
-                        "promotions": [],
-                        "error": str(inner_err)
-                    }
+                    "bank_name": url,
+                    "error": str(e)
                 }
 
             results.append(extracted)
 
-        # =========================
-        # STRATEGY (OPTIONAL FAIL SAFE)
-        # =========================
-        try:
-            strategy = analyze_strategy(results)
-        except Exception as e:
-            strategy = f"Strategy error: {str(e)}"
+        strategy = analyze_strategy(results)
 
         return jsonify({
             "status": "success",
-            "total": len(results),   # ✅ thêm để frontend dùng
             "results": results,
             "strategy": strategy
         })
 
     except Exception as e:
         traceback.print_exc()
-
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 if __name__ == "__main__":
-    app.run(
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", 5000))
-    )
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
