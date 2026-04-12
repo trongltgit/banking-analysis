@@ -1,12 +1,29 @@
-from groq import Groq
 import os
 import json
 import re
 
-client = Groq(api_key=os.environ.get("GROQ_API_KEY_BK", ""))
+# Import giống extractor
+try:
+    from groq import Groq
+except ImportError:
+    from groq import Client as Groq
+
+def get_groq_client():
+    """Khởi tạo Groq client"""
+    api_key = os.environ.get("GROQ_API_KEY_BK")
+    if not api_key:
+        return None
+    
+    try:
+        return Groq(api_key=api_key)
+    except TypeError:
+        import httpx
+        http_client = httpx.Client(follow_redirects=True)
+        return Groq(api_key=api_key, http_client=http_client)
+    except:
+        return None
 
 def clean_json(text):
-    """Làm sạch JSON"""
     try:
         return json.loads(text)
     except:
@@ -19,15 +36,16 @@ def clean_json(text):
     return None
 
 def analyze_strategy(results):
-    """Tạo chiến lược từ kết quả phân tích"""
+    """Tạo chiến lược với Groq"""
     
-    if not os.environ.get("GROQ_API_KEY_BK"):
+    client = get_groq_client()
+    if not client:
         return {
-            "executive_summary": "API key not configured. Strategy generation unavailable.",
+            "executive_summary": "Groq API not available. Using fallback analysis.",
             "strategic_recommendations": {"immediate_actions": []}
         }
 
-    # Format competitor data
+    # Format data
     competitors = []
     for r in results:
         a = r.get("analysis", {})
@@ -35,36 +53,30 @@ def analyze_strategy(results):
             "name": a.get("bank_name", "Unknown"),
             "products": len(a.get("products", [])),
             "promotions": len(a.get("promotions", [])),
-            "digital": len(a.get("digital_capabilities", [])),
-            "positioning": a.get("positioning", "Unknown")
+            "digital": len(a.get("digital_capabilities", []))
         })
 
-    prompt = f"""As a banking strategy consultant, analyze these competitors and provide strategic recommendations.
+    prompt = f"""Phân tích chiến lược cạnh tranh ngân hàng.
 
-COMPETITORS:
+ĐỐI THỦ:
 {json.dumps(competitors, ensure_ascii=False, indent=2)}
 
-Return JSON format:
+Trả về JSON:
 {{
-    "executive_summary": "2-3 sentence strategic summary",
+    "executive_summary": "Tóm tắt chiến lược 2-3 câu",
     "competitive_landscape": {{
-        "market_leader": "Which bank leads and why",
-        "key_differentiators": ["Factor 1", "Factor 2"]
+        "market_leader": "Ngân hàng dẫn đầu và lý do",
+        "key_differentiators": ["Yếu tố khác biệt"]
     }},
-    "market_gaps": ["Opportunity 1", "Opportunity 2"],
+    "market_gaps": ["Cơ hội 1", "Cơ hội 2"],
     "strategic_recommendations": {{
         "immediate_actions": [
-            {{"action": "Specific action", "rationale": "Why", "timeline": "0-6 months"}}
-        ],
-        "product_strategy": ["Strategy 1"],
-        "digital_strategy": ["Strategy 1"]
-    }},
-    "competitor_analysis": [
-        {{"bank": "Name", "position": "Leader/Challenger", "threat_level": "High/Medium/Low"}}
-    ]
+            {{"action": "Hành động cụ thể", "rationale": "Lý do", "timeline": "0-6 tháng"}}
+        ]
+    }}
 }}
 
-Valid JSON only. No markdown."""
+JSON hợp lệ, không markdown."""
 
     try:
         res = client.chat.completions.create(
@@ -79,22 +91,17 @@ Valid JSON only. No markdown."""
 
         if not strategy:
             return {
-                "executive_summary": "Could not generate structured strategy. Raw analysis available.",
+                "executive_summary": "Could not parse strategy. Raw data available.",
                 "raw_response": content[:500],
-                "competitive_landscape": {"market_leader": "Analysis pending"},
-                "strategic_recommendations": {
-                    "immediate_actions": [{"action": "Retry analysis", "rationale": "Parsing failed"}]
-                }
+                "strategic_recommendations": {"immediate_actions": []}
             }
 
         return strategy
 
     except Exception as e:
         return {
-            "executive_summary": f"Strategy generation error: {str(e)[:100]}",
-            "competitive_landscape": {"market_leader": "Unknown"},
+            "executive_summary": f"Strategy error: {str(e)[:100]}",
             "strategic_recommendations": {
-                "immediate_actions": [{"action": "Check API configuration", "rationale": "Service error"}]
-            },
-            "error": str(e)[:100]
+                "immediate_actions": [{"action": "Check API", "rationale": "Error occurred"}]
+            }
         }
