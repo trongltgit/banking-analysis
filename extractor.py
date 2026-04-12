@@ -6,12 +6,11 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY_BK"))
 def extract_data(text, url):
     try:
         prompt = f"""
-        Tóm tắt nhanh website ngân hàng:
+        Tóm tắt website ngân hàng:
 
-        Nội dung:
         {text}
 
-        Trả về JSON:
+        Trả JSON:
         {{
             "bank": "...",
             "products": "...",
@@ -21,10 +20,10 @@ def extract_data(text, url):
         """
 
         res = client.chat.completions.create(
-            model="llama3-8b-8192",   # nhẹ nhất
+            model="llama-3.3-8b-instant",   # ✅ FIX
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
-            max_tokens=300   # 🔥 giảm mạnh
+            max_tokens=300
         )
 
         return {
