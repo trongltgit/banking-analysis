@@ -1,35 +1,40 @@
 from groq import Groq
 import os
+import json
 
 client = Groq(api_key=os.environ["GROQ_API_KEY_BK"])
 
-
 def extract_data(text, url):
+    # Sử dụng Llama-3.3-70b để trích xuất dữ liệu cực kỳ chính xác
+    model_id = "llama-3.3-70b-versatile"
+    
     prompt = f"""
-    Phân tích nội dung website ngân hàng:
+    Trích xuất thông tin tài chính từ nội dung website sau đây.
+    Yêu cầu trả về DUY NHẤT một đối tượng JSON (không giải thích thêm).
 
-    - Tên ngân hàng
-    - Sản phẩm
-    - Lãi suất
-    - Ưu đãi
+    Cấu trúc JSON mong muốn:
+    {{
+      "bank_name": "Tên ngân hàng",
+      "products": ["Sản phẩm 1", "Sản phẩm 2"],
+      "interest_rates": "Thông tin lãi suất",
+      "promotions": ["Ưu đãi 1", "Ưu đãi 2"]
+    }}
 
     Nội dung:
     {text}
-
-    Trả về JSON:
     """
 
     try:
         res = client.chat.completions.create(
-            model="llama3-70b-8192",
+            model=model_id,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=600
+            temperature=0.1, # Giảm nhiệt độ để trích xuất dữ liệu cứng, chính xác
+            response_format={"type": "json_object"} # Ép buộc Groq trả về JSON
         )
 
         return {
             "url": url,
-            "analysis": res.choices[0].message.content
+            "analysis": json.loads(res.choices[0].message.content)
         }
 
     except Exception as e:
