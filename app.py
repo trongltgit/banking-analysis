@@ -1,6 +1,7 @@
 import os
 import traceback
 import json
+import time
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 
@@ -9,8 +10,7 @@ from extractor import extract_data
 from llm import analyze_strategy
 
 app = Flask(__name__)
-# CORS cho phép tất cả origins trong development
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app)
 
 @app.route("/")
 def home():
@@ -18,7 +18,7 @@ def home():
 
 @app.route("/health")
 def health():
-    return {"status": "ok", "version": "2.1-pro"}
+    return {"status": "ok", "version": "2.2-stable"}
 
 def safe_analysis(item):
     """Normalize data"""
@@ -31,11 +31,23 @@ def safe_analysis(item):
         "interest_rates": a.get("interest_rates") or {},
         "promotions": a.get("promotions") or [],
         "digital_capabilities": a.get("digital_capabilities") or [],
-        "positioning": a.get("positioning") or "Unknown",
-        "strengths": a.get("strengths") or [],
-        "weaknesses": a.get("weaknesses") or [],
+        "strategic_analysis": a.get("strategic_analysis", {
+            "positioning": "Unknown",
+            "target_segments": [],
+            "key_differentiators": [],
+            "pricing_strategy": "Unknown",
+            "distribution_strategy": "Unknown",
+            "marketing_strategy": "Unknown"
+        }),
+        "competitive_assessment": a.get("competitive_assessment", {
+            "strengths": [],
+            "weaknesses": [],
+            "market_position": "Unknown",
+            "competitive_threat_level": "Unknown"
+        }),
         "url": item.get("url"),
-        "extraction_quality": item.get("extraction_quality", "unknown")
+        "extraction_quality": item.get("extraction_quality", "unknown"),
+        "error": item.get("error")
     }
 
 @app.route("/analyze", methods=["POST"])
@@ -47,11 +59,17 @@ def analyze():
         if not urls:
             return jsonify({"status": "error", "message": "No URLs provided"}), 400
 
+        # Giới hạn số URL để tránh rate limit
+        if len(urls) > 5:
+            urls = urls[:5]
+            print(f"⚠️ Limited to 5 URLs to avoid rate limits")
+
         results = []
         print(f"\n{'='*60}")
         print(f"🚀 DEEP ANALYSIS: {len(urls)} BANKS")
         print(f"{'='*60}\n")
 
+        # Xử lý TUẦN TỰ (không parallel) để tránh rate limit
         for idx, url in enumerate(urls, 1):
             print(f"\n[{idx}/{len(urls)}] 🔍 {url}")
             
@@ -59,33 +77,31 @@ def analyze():
                 # Crawl
                 raw = crawl_website(url)
                 if raw.startswith("ERROR_CRAWL"):
-                    raise Exception(raw)
+                    print(f"      ⚠️ Crawl failed: {raw[:50]}")
                 
-                print(f"      📄 {len(raw)} chars crawled")
+                # Delay trước khi gọi AI
+                time.sleep(1)
                 
                 # AI Extraction
                 extracted = extract_data(raw, url)
                 quality = extracted.get("extraction_quality", "unknown")
                 product_count = len(extracted.get("analysis", {}).get("products", []))
                 
-                print(f"      🤖 Quality: {quality} | 📦 Products: {product_count}")
-
+                print(f"      📄 {len(raw)} chars | 🤖 {quality} | 📦 {product_count} products")
+                
+                # Delay sau mỗi lần gọi API
+                time.sleep(1.5)
+                
             except Exception as e:
-                print(f"      ❌ Error: {str(e)[:100]}")
-                # Fallback data
+                print(f"      ❌ Error: {str(e)[:80]}")
                 domain = url.split("//")[-1].split("/")[0].replace("www.", "").upper()
                 extracted = {
                     "url": url,
                     "analysis": {
                         "bank_name": domain,
-                        "bank_code": None,
                         "products": [],
-                        "interest_rates": {},
-                        "promotions": [],
-                        "digital_capabilities": [],
-                        "positioning": "Extraction failed",
-                        "strengths": [],
-                        "weaknesses": [f"Crawl error: {str(e)[:50]}"]
+                        "strategic_analysis": {"positioning": f"Error: {str(e)[:30]}"},
+                        "competitive_assessment": {"strengths": [], "weaknesses": ["Processing error"]}
                     },
                     "extraction_quality": "error"
                 }
@@ -96,6 +112,9 @@ def analyze():
         print("🧠 GENERATING STRATEGY...")
         print(f"{'='*60}\n")
 
+        # Delay trước khi gọi strategy
+        time.sleep(2)
+        
         # Strategy Generation
         try:
             strategy = analyze_strategy(results)
@@ -108,19 +127,14 @@ def analyze():
                     pass
                     
         except Exception as e:
-            print(f"      ❌ Strategy error: {str(e)[:100]}")
+            print(f"      ❌ Strategy error: {str(e)[:80]}")
             strategy = {
-                "executive_summary": "Strategy generation encountered an error. Using competitive analysis fallback.",
-                "competitive_landscape": {
-                    "market_leader": "Analysis requires retry",
-                    "challengers": []
-                },
+                "executive_summary": "Strategy generation failed due to rate limits. Please try with fewer banks.",
+                "competitive_ranking": [{"rank": i+1, "bank": r.get("bank_name", "Unknown"), "position": "Unknown"} for i, r in enumerate(results)],
                 "strategic_recommendations": {
-                    "immediate_actions": [
-                        {"action": "Review competitor websites manually", "rationale": "Automated extraction limited"}
-                    ]
-                },
-                "error": str(e)[:100]
+                    "overall_strategy": "Retry with 2-3 banks maximum",
+                    "immediate_actions": ["Wait 1 minute", "Reduce number of URLs"]
+                }
             }
 
         return jsonify({
@@ -130,7 +144,7 @@ def analyze():
             "meta": {
                 "banks_analyzed": len(results),
                 "total_products": sum(len(r["products"]) for r in results),
-                "analysis_date": "2026-04-12"
+                "note": "Rate limiting may affect results quality"
             }
         })
 
