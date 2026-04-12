@@ -2,6 +2,7 @@ import os
 import traceback
 import json
 import time
+import hashlib
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 
@@ -12,13 +13,20 @@ from llm import analyze_strategy
 app = Flask(__name__)
 CORS(app)
 
+# Simple cache
+_cache = {}
+
+def get_cache_key(urls):
+    """Tạo cache key từ URLs"""
+    return hashlib.md5(json.dumps(sorted(urls)).encode()).hexdigest()
+
 @app.route("/")
 def home():
     return render_template("dashboard.html")
 
 @app.route("/health")
 def health():
-    return {"status": "ok", "version": "3.0-deep-ai"}
+    return {"status": "ok", "version": "3.1-cached"}
 
 def safe_analysis(item):
     """Normalize data"""
@@ -59,9 +67,22 @@ def analyze():
         if not urls:
             return jsonify({"status": "error", "message": "No URLs provided"}), 400
 
-        # Giới hạn 4 URLs để tránh timeout
-        if len(urls) > 4:
-            urls = urls[:4]
+        # Giới hạn 3 URLs để tránh timeout
+        if len(urls) > 3:
+            urls = urls[:3]
+            print(f"⚠️ Limited to 3 URLs to avoid timeout")
+
+        # Check cache
+        cache_key = get_cache_key(urls)
+        if cache_key in _cache:
+            print(f"♻️ Returning cached result for {cache_key[:8]}...")
+            return jsonify({
+                "status": "success",
+                "results": _cache[cache_key]["results"],
+                "strategy": _cache[cache_key]["strategy"],
+                "cached": True,
+                "meta": _cache[cache_key]["meta"]
+            })
 
         results = []
         errors = []
@@ -77,50 +98,55 @@ def analyze():
             try:
                 # Crawl
                 raw = crawl_website(url)
-                crawl_status = "✅" if not raw.startswith("ERROR_CRAWL") else "⚠️"
-                print(f"      {crawl_status} Crawled {len(raw)} chars")
+                crawl_ok = not raw.startswith("ERROR_CRAWL")
+                print(f"      {'✅' if crawl_ok else '⚠️'} Crawled {len(raw)} chars")
                 
                 # Delay trước AI
-                time.sleep(2)
+                time.sleep(1)
                 
-                # AI Extraction - KHÔNG try-catch để lỗi được báo ra
-                extracted = extract_data(raw, url)
-                
-                quality = extracted.get("extraction_quality", "unknown")
-                product_count = len(extracted.get("analysis", {}).get("products", []))
-                
-                print(f"      ✅ AI Analysis: {quality} | {product_count} products")
+                # AI Extraction
+                try:
+                    extracted = extract_data(raw, url)
+                    quality = extracted.get("extraction_quality", "unknown")
+                    product_count = len(extracted.get("analysis", {}).get("products", []))
+                    print(f"      ✅ AI Analysis: {quality} | {product_count} products")
+                except Exception as e:
+                    error_msg = str(e)
+                    print(f"      ❌ AI Analysis failed: {error_msg[:60]}")
+                    errors.append(f"{url}: {error_msg}")
+                    
+                    # Tạo result với lỗi nhưng không fail cả request
+                    domain = url.split("//")[-1].split("/")[0].replace("www.", "").upper()
+                    extracted = {
+                        "url": url,
+                        "analysis": {
+                            "bank_name": f"{domain} (AI Error)",
+                            "bank_code": None,
+                            "products": [],
+                            "strategic_analysis": {"positioning": f"AI failed: {error_msg[:40]}"},
+                            "competitive_assessment": {"strengths": [], "weaknesses": [error_msg]}
+                        },
+                        "extraction_quality": "error"
+                    }
                 
                 # Delay sau AI
-                time.sleep(2)
+                if idx < len(urls):  # Không delay sau cái cuối
+                    time.sleep(2)
                 
             except Exception as e:
-                error_msg = str(e)
-                print(f"      ❌ AI Analysis failed: {error_msg[:80]}")
-                errors.append(f"{url}: {error_msg}")
-                
-                # Vẫn tạo structure nhưng đánh dấu lỗi rõ ràng
-                domain = url.split("//")[-1].split("/")[0].replace("www.", "").upper()
-                extracted = {
-                    "url": url,
-                    "analysis": {
-                        "bank_name": f"{domain} (LỖI: {error_msg[:30]})",
-                        "products": [],
-                        "strategic_analysis": {"positioning": f"Error: {error_msg[:50]}"},
-                        "competitive_assessment": {"strengths": [], "weaknesses": [error_msg]}
-                    },
-                    "extraction_quality": "error"
-                }
+                print(f"      ❌ Unexpected error: {str(e)[:60]}")
+                errors.append(f"{url}: {str(e)}")
+                continue
 
             results.append(safe_analysis(extracted))
 
-        # Nếu tất cả đều lỗi, báo lỗi tổng
-        if len(errors) == len(urls):
+        # Nếu tất cả đều lỗi
+        if len(errors) == len(urls) and len(urls) > 0:
             return jsonify({
                 "status": "error",
                 "message": "Tất cả các ngân hàng đều phân tích thất bại",
                 "errors": errors,
-                "suggestion": "Có thể do rate limit Groq API. Vui lòng đợi 1 phút và thử lại với ít URL hơn (2-3)."
+                "suggestion": "Có thể do rate limit Groq API. Đợi 1 phút và thử lại."
             }), 503
 
         print(f"\n{'='*60}")
@@ -128,7 +154,7 @@ def analyze():
         print(f"{'='*60}\n")
 
         # Delay trước strategy
-        time.sleep(3)
+        time.sleep(1)
         
         # Strategy Generation
         try:
@@ -139,18 +165,18 @@ def analyze():
                 strategy = json.loads(strategy)
                     
         except Exception as e:
-            print(f"      ❌ Strategy failed: {str(e)[:80]}")
-            # Strategy lỗi không fail cả request, chỉ báo trong response
+            print(f"      ❌ Strategy failed: {str(e)[:60]}")
+            # Strategy lỗi không fail cả request
             strategy = {
-                "executive_summary": f"Strategy generation error: {str(e)[:100]}. Các phân tích ngân hàng riêng lẻ vẫn hợp lệ.",
-                "competitive_ranking": [],
+                "executive_summary": f"Strategy synthesis error: {str(e)[:60]}. Individual bank analyses are valid.",
+                "competitive_ranking": [{"rank": i+1, "bank": r.get("bank_name", "Unknown"), "position": "Unknown", "score": "-"} for i, r in enumerate(results)],
                 "strategic_recommendations": {
-                    "overall_strategy": "Error in strategy synthesis",
-                    "immediate_actions": ["Review individual bank analysis below", "Retry strategy generation later"]
+                    "overall_strategy": "Retry strategy generation",
+                    "immediate_actions": ["Individual bank data is valid", "Retry for full strategy"]
                 }
             }
 
-        return jsonify({
+        response_data = {
             "status": "success",
             "results": results,
             "strategy": strategy,
@@ -161,14 +187,19 @@ def analyze():
                 "failed": len(errors),
                 "total_products": sum(len(r["products"]) for r in results)
             }
-        })
+        }
+        
+        # Cache kết quả
+        _cache[cache_key] = response_data
+        print(f"💾 Cached result for {cache_key[:8]}")
+
+        return jsonify(response_data)
 
     except Exception as e:
         traceback.print_exc()
         return jsonify({
             "status": "error", 
-            "message": str(e),
-            "traceback": traceback.format_exc() if os.environ.get("DEBUG") else None
+            "message": str(e)
         }), 500
 
 if __name__ == "__main__":
