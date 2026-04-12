@@ -5,24 +5,26 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY_BK"))
 
 def extract_data(text, url):
     try:
-        # ❗ GIẢM SIZE TEXT (RẤT QUAN TRỌNG)
-        text = text[:1500]
-
         prompt = f"""
-        Tóm tắt nội dung ngân hàng:
+        Tóm tắt nhanh website ngân hàng:
 
+        Nội dung:
         {text}
 
-        Trả JSON:
-        bank, products, interest, offers
+        Trả về JSON:
+        {{
+            "bank": "...",
+            "products": "...",
+            "interest": "...",
+            "offers": "..."
+        }}
         """
 
         res = client.chat.completions.create(
-            model="llama3-8b-8192",
+            model="llama3-8b-8192",   # nhẹ nhất
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=300,   # ❗ giảm token
-            timeout=10        # ❗ tránh treo
+            temperature=0.2,
+            max_tokens=300   # 🔥 giảm mạnh
         )
 
         return {
@@ -33,5 +35,5 @@ def extract_data(text, url):
     except Exception as e:
         return {
             "url": url,
-            "analysis": f"LLM ERROR: {str(e)}"
+            "analysis": f"LLM error: {str(e)}"
         }
