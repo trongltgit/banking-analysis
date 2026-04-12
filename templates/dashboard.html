@@ -3,18 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Banking Intelligence PRO - Deep Analytics</title>
+    <title>AI Banking Intelligence PRO</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             color: #e2e8f0;
             min-height: 100vh;
@@ -24,37 +19,20 @@
             background: linear-gradient(90deg, #0f5e43 0%, #059669 100%);
             padding: 20px 30px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            position: sticky;
-            top: 0;
-            z-index: 100;
         }
 
-        .header h1 {
-            font-size: 24px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .header .subtitle {
-            font-size: 13px;
-            opacity: 0.9;
-            margin-top: 4px;
-            font-weight: 400;
-        }
+        .header h1 { font-size: 24px; font-weight: 700; }
+        .header .subtitle { font-size: 13px; opacity: 0.9; margin-top: 4px; }
 
         .container {
             display: flex;
-            height: calc(100vh - 80px);
+            height: calc(100vh - 70px);
             overflow: hidden;
         }
 
-        /* LEFT PANEL */
         .left-panel {
             width: 35%;
             background: rgba(30, 41, 59, 0.8);
-            backdrop-filter: blur(10px);
             padding: 24px;
             overflow-y: auto;
             border-right: 1px solid rgba(255,255,255,0.1);
@@ -71,7 +49,6 @@
         .input-section h3 {
             font-size: 14px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
             color: #94a3b8;
             margin-bottom: 12px;
         }
@@ -86,13 +63,9 @@
             color: #e2e8f0;
             font-size: 14px;
             resize: vertical;
-            transition: all 0.3s;
         }
 
-        textarea:focus {
-            outline: none;
-            border-color: #10b981;
-        }
+        textarea:focus { outline: none; border-color: #10b981; }
 
         .btn-primary {
             width: 100%;
@@ -103,13 +76,8 @@
             border: none;
             border-radius: 12px;
             font-weight: 700;
-            font-size: 15px;
             cursor: pointer;
             transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
         }
 
         .btn-primary:hover:not(:disabled) {
@@ -123,19 +91,19 @@
         }
 
         .spinner {
+            display: inline-block;
             width: 18px;
             height: 18px;
             border: 2px solid rgba(255,255,255,0.3);
             border-top-color: white;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* STRATEGY PANEL */
         .strategy-panel {
             background: rgba(15, 23, 42, 0.6);
             border-radius: 16px;
@@ -147,9 +115,6 @@
             font-size: 16px;
             color: #10b981;
             margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
 
         .insight-card {
@@ -161,7 +126,7 @@
         }
 
         .insight-card h4 {
-            font-size: 13px;
+            font-size: 12px;
             color: #94a3b8;
             text-transform: uppercase;
             margin-bottom: 8px;
@@ -170,33 +135,14 @@
         .insight-card p, .insight-card li {
             font-size: 14px;
             line-height: 1.6;
-            color: #e2e8f0;
         }
 
-        .insight-card ul {
-            margin-left: 16px;
-        }
-
-        .insight-card.warning {
-            border-left-color: #f59e0b;
-        }
-
-        .insight-card.danger {
-            border-left-color: #ef4444;
-        }
-
-        .insight-card.info {
-            border-left-color: #3b82f6;
-        }
-
-        /* RIGHT PANEL */
         .right-panel {
             width: 65%;
             padding: 24px;
             overflow-y: auto;
         }
 
-        /* KPI CARDS */
         .kpi-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -210,30 +156,21 @@
             border-radius: 16px;
             border: 1px solid rgba(255,255,255,0.1);
             text-align: center;
-            transition: transform 0.3s;
-        }
-
-        .kpi-card:hover {
-            transform: translateY(-4px);
         }
 
         .kpi-value {
             font-size: 32px;
             font-weight: 800;
-            background: linear-gradient(90deg, #10b981, #059669);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: #10b981;
             margin-bottom: 4px;
         }
 
         .kpi-label {
-            font-size: 13px;
+            font-size: 12px;
             color: #94a3b8;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
-        /* CHARTS */
         .charts-grid {
             display: grid;
             grid-template-columns: 2fr 1fr;
@@ -253,10 +190,8 @@
             color: #94a3b8;
             margin-bottom: 16px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
-        /* TABLES */
         .data-table {
             background: rgba(30, 41, 59, 0.8);
             border-radius: 16px;
@@ -267,11 +202,6 @@
         .table-header {
             padding: 20px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .table-header h3 {
-            font-size: 16px;
-            color: #e2e8f0;
         }
 
         table {
@@ -286,19 +216,12 @@
             font-size: 12px;
             color: #94a3b8;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 600;
         }
 
         td {
             padding: 16px;
             border-bottom: 1px solid rgba(255,255,255,0.05);
             font-size: 14px;
-            color: #e2e8f0;
-        }
-
-        tr:hover {
-            background: rgba(255,255,255,0.02);
         }
 
         .bank-name {
@@ -316,128 +239,27 @@
             margin: 2px;
         }
 
-        .promo-tag {
-            background: rgba(245, 158, 11, 0.2);
-            color: #f59e0b;
-        }
-
-        .rate-value {
-            font-weight: 700;
-            color: #f59e0b;
-        }
-
-        /* STRATEGY SECTION IN RIGHT PANEL */
-        .strategy-detail {
-            background: rgba(30, 41, 59, 0.8);
-            border-radius: 16px;
-            padding: 24px;
-            margin-top: 24px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .strategy-section {
-            margin-bottom: 24px;
-        }
-
-        .strategy-section h4 {
-            font-size: 14px;
-            color: #10b981;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .action-item {
-            background: rgba(15, 23, 42, 0.6);
-            padding: 16px;
-            border-radius: 12px;
-            margin-bottom: 12px;
-            border-left: 4px solid #3b82f6;
-        }
-
-        .action-item h5 {
-            font-size: 14px;
-            color: #e2e8f0;
-            margin-bottom: 8px;
-        }
-
-        .action-meta {
-            display: flex;
-            gap: 16px;
-            font-size: 12px;
-            color: #94a3b8;
-            margin-top: 8px;
-        }
-
-        .badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        .badge-high {
-            background: rgba(239, 68, 68, 0.2);
-            color: #ef4444;
-        }
-
-        .badge-medium {
-            background: rgba(245, 158, 11, 0.2);
-            color: #f59e0b;
-        }
-
-        .badge-low {
-            background: rgba(16, 185, 129, 0.2);
-            color: #10b981;
-        }
-
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
+            padding: 40px;
             color: #94a3b8;
         }
 
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
+        .error-message {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px 0;
         }
 
-        /* Responsive */
+        .hidden { display: none !important; }
+
         @media (max-width: 1200px) {
-            .container {
-                flex-direction: column;
-                height: auto;
-            }
-            .left-panel, .right-panel {
-                width: 100%;
-            }
-            .kpi-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .charts-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.3);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(100, 116, 139, 0.5);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(100, 116, 139, 0.8);
+            .container { flex-direction: column; height: auto; }
+            .left-panel, .right-panel { width: 100%; }
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .charts-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -454,22 +276,21 @@
     <div class="left-panel">
         <div class="input-section">
             <h3>🎯 Target Bank URLs</h3>
-            <textarea id="urls" placeholder="Nhập URL các ngân hàng cần phân tích...">
+            <textarea id="urls" placeholder="Nhập URL các ngân hàng...">
 https://techcombank.com/
 https://bidv.com.vn/
 https://www.vietinbank.vn/
-https://www.vietcombank.com.vn/
-https://tcb.com.vn/</textarea>
+https://www.vietcombank.com.vn/</textarea>
             <button class="btn-primary" onclick="analyze()" id="analyzeBtn">
-                <span>🚀 Run Deep Analysis</span>
+                Run Deep Analysis
             </button>
         </div>
 
         <div class="strategy-panel" id="strategyPanel">
             <h3>🧠 AI Strategic Insights</h3>
             <div class="empty-state">
-                <div class="empty-state-icon">📊</div>
-                <p>Click "Run Deep Analysis" to generate strategic intelligence</p>
+                <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                <p>Click "Run Deep Analysis" to generate intelligence</p>
             </div>
         </div>
     </div>
@@ -477,19 +298,22 @@ https://tcb.com.vn/</textarea>
     <!-- RIGHT PANEL -->
     <div class="right-panel">
         
+        <!-- ERROR DISPLAY -->
+        <div id="errorDisplay" class="error-message hidden"></div>
+
         <!-- KPI -->
-        <div class="kpi-grid" id="kpiSection" style="display: none;">
+        <div class="kpi-grid hidden" id="kpiSection">
             <div class="kpi-card">
                 <div class="kpi-value" id="totalBanks">0</div>
-                <div class="kpi-label">Banks Analyzed</div>
+                <div class="kpi-label">Banks</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-value" id="totalProducts">0</div>
-                <div class="kpi-label">Total Products</div>
+                <div class="kpi-label">Products</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-value" id="totalPromos">0</div>
-                <div class="kpi-label">Active Promotions</div>
+                <div class="kpi-label">Promotions</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-value" id="digitalScore">0</div>
@@ -498,19 +322,19 @@ https://tcb.com.vn/</textarea>
         </div>
 
         <!-- CHARTS -->
-        <div class="charts-grid" id="chartsSection" style="display: none;">
+        <div class="charts-grid hidden" id="chartsSection">
             <div class="chart-container">
-                <div class="chart-title">📊 Product Portfolio Distribution</div>
+                <div class="chart-title">Product Portfolio Distribution</div>
                 <canvas id="barChart"></canvas>
             </div>
             <div class="chart-container">
-                <div class="chart-title">🥧 Market Share by Products</div>
+                <div class="chart-title">Market Share</div>
                 <canvas id="pieChart"></canvas>
             </div>
         </div>
 
-        <!-- COMPETITOR TABLE -->
-        <div class="data-table" id="tableSection" style="display: none;">
+        <!-- TABLE -->
+        <div class="data-table hidden" id="tableSection">
             <div class="table-header">
                 <h3>🏛️ Competitor Analysis Matrix</h3>
             </div>
@@ -518,27 +342,22 @@ https://tcb.com.vn/</textarea>
                 <thead>
                     <tr>
                         <th>Bank</th>
-                        <th>Product Categories</th>
+                        <th>Categories</th>
                         <th>Key Products</th>
-                        <th>Interest Rates</th>
-                        <th>Promotions</th>
-                        <th>Positioning</th>
+                        <th>Rates</th>
+                        <th>Promos</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody"></tbody>
             </table>
         </div>
 
-        <!-- STRATEGY DETAIL -->
-        <div class="strategy-detail" id="strategyDetail" style="display: none;">
-            <!-- Populated by JS -->
-        </div>
-
     </div>
 </div>
 
 <script>
-let barChart, pieChart;
+let barChart = null;
+let pieChart = null;
 
 async function analyze() {
     const btn = document.getElementById('analyzeBtn');
@@ -548,49 +367,88 @@ async function analyze() {
         .filter(u => u);
 
     if (urls.length === 0) {
-        alert('Vui lòng nhập ít nhất một URL');
+        showError('Vui lòng nhập ít nhất một URL');
         return;
     }
 
-    // Loading state
-    btn.disabled = true;
-    btn.innerHTML = '<div class="spinner"></div><span>Deep Analysis Running...</span>';
+    // Reset UI
+    hideError();
+    setLoading(true);
     
+    // Update strategy panel to loading state
     document.getElementById('strategyPanel').innerHTML = `
         <h3>🧠 AI Strategic Insights</h3>
-        <div style="padding: 40px; text-align: center;">
-            <div class="spinner" style="width: 40px; height: 40px; margin: 0 auto 16px;"></div>
-            <p style="color: #94a3b8;">AI đang phân tích chuyên sâu ${urls.length} ngân hàng...</p>
-            <p style="font-size: 12px; color: #64748b; margin-top: 8px;">Trích xuất dữ liệu → Phân tích sản phẩm → Đánh giá cạnh tranh → Tạo chiến lược</p>
+        <div style="text-align: center; padding: 40px;">
+            <div class="spinner" style="width: 40px; height: 40px;"></div>
+            <p style="color: #94a3b8; margin-top: 16px;">Analyzing ${urls.length} banks...</p>
+            <p style="font-size: 12px; color: #64748b; margin-top: 8px;">This may take 30-60 seconds</p>
         </div>
     `;
 
     try {
+        // Set timeout for fetch (Render free tier can be slow)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
+
         const res = await fetch('/analyze', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({urls})
+            body: JSON.stringify({urls}),
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP error! status: ${res.status}`);
+        }
 
         const data = await res.json();
         
         if (data.status === 'error') {
-            throw new Error(data.message);
+            throw new Error(data.message || 'Unknown error from server');
         }
 
         renderAll(data);
         
     } catch (error) {
+        console.error('Analysis error:', error);
+        showError(`Analysis failed: ${error.message}`);
+        
         document.getElementById('strategyPanel').innerHTML = `
             <h3>❌ Error</h3>
-            <div class="insight-card danger">
+            <div class="insight-card" style="border-left-color: #ef4444;">
                 <p>${error.message}</p>
+                <p style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+                    Tip: Try with fewer URLs or check if websites are accessible.
+                </p>
             </div>
         `;
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<span>🚀 Run Deep Analysis</span>';
+        setLoading(false);
     }
+}
+
+function setLoading(loading) {
+    const btn = document.getElementById('analyzeBtn');
+    if (loading) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = 'Run Deep Analysis';
+    }
+}
+
+function showError(msg) {
+    const el = document.getElementById('errorDisplay');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+}
+
+function hideError() {
+    document.getElementById('errorDisplay').classList.add('hidden');
 }
 
 function renderAll(data) {
@@ -598,16 +456,14 @@ function renderAll(data) {
     const strategy = data.strategy || {};
 
     // Show sections
-    document.getElementById('kpiSection').style.display = 'grid';
-    document.getElementById('chartsSection').style.display = 'grid';
-    document.getElementById('tableSection').style.display = 'block';
-    document.getElementById('strategyDetail').style.display = 'block';
+    document.getElementById('kpiSection').classList.remove('hidden');
+    document.getElementById('chartsSection').classList.remove('hidden');
+    document.getElementById('tableSection').classList.remove('hidden');
 
     renderKPI(results);
     renderCharts(results);
     renderTable(results);
     renderStrategy(strategy);
-    renderStrategyPanel(strategy, results);
 }
 
 function renderKPI(results) {
@@ -616,32 +472,32 @@ function renderKPI(results) {
     let digitalCaps = 0;
 
     results.forEach(r => {
-        const a = r.analysis || {};
-        totalProducts += (a.products || []).length;
-        totalPromos += (a.promotions || []).length;
-        digitalCaps += (a.digital_capabilities || []).length;
+        totalProducts += (r.products || []).length;
+        totalPromos += (r.promotions || []).length;
+        digitalCaps += (r.digital_capabilities || []).length;
     });
 
-    document.getElementById('totalBanks').innerText = results.length;
-    document.getElementById('totalProducts').innerText = totalProducts;
-    document.getElementById('totalPromos').innerText = totalPromos;
-    document.getElementById('digitalScore').innerText = digitalCaps;
+    document.getElementById('totalBanks').textContent = results.length;
+    document.getElementById('totalProducts').textContent = totalProducts;
+    document.getElementById('totalPromos').textContent = totalPromos;
+    document.getElementById('digitalScore').textContent = digitalCaps;
 }
 
 function renderCharts(results) {
-    const labels = results.map(r => r.analysis?.bank_name || 'Unknown');
-    const productCounts = results.map(r => (r.analysis?.products || []).length);
-    const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+    const labels = results.map(r => r.bank_name || 'Unknown');
+    const productCounts = results.map(r => (r.products || []).length);
+    const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
 
     if (barChart) barChart.destroy();
     if (pieChart) pieChart.destroy();
 
-    barChart = new Chart(document.getElementById('barChart'), {
+    const ctxBar = document.getElementById('barChart').getContext('2d');
+    barChart = new Chart(ctxBar, {
         type: 'bar',
         data: {
-            labels,
+            labels: labels,
             datasets: [{
-                label: 'Số lượng sản phẩm',
+                label: 'Products',
                 data: productCounts,
                 backgroundColor: colors,
                 borderRadius: 8
@@ -649,27 +505,26 @@ function renderCharts(results) {
         },
         options: {
             responsive: true,
-            plugins: {
-                legend: {display: false}
-            },
+            plugins: { legend: { display: false } },
             scales: {
                 y: {
                     beginAtZero: true,
-                    grid: {color: 'rgba(255,255,255,0.1)'},
-                    ticks: {color: '#94a3b8'}
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: '#94a3b8' }
                 },
                 x: {
-                    grid: {display: false},
-                    ticks: {color: '#94a3b8'}
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8' }
                 }
             }
         }
     });
 
-    pieChart = new Chart(document.getElementById('pieChart'), {
+    const ctxPie = document.getElementById('pieChart').getContext('2d');
+    pieChart = new Chart(ctxPie, {
         type: 'doughnut',
         data: {
-            labels,
+            labels: labels,
             datasets: [{
                 data: productCounts,
                 backgroundColor: colors,
@@ -681,7 +536,7 @@ function renderCharts(results) {
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: {color: '#94a3b8', padding: 16}
+                    labels: { color: '#94a3b8', padding: 16 }
                 }
             }
         }
@@ -693,174 +548,90 @@ function renderTable(results) {
     tbody.innerHTML = '';
 
     results.forEach(r => {
-        const a = r.analysis || {};
-        
-        // Group products by category
-        const categories = [...new Set((a.products || []).map(p => 
-            typeof p === 'object' ? p.category : 'Other'
+        const categories = [...new Set((r.products || []).map(p => 
+            typeof p === 'object' ? (p.category || 'Other') : 'Other'
         ))];
 
-        const productNames = (a.products || []).map(p => 
-            typeof p === 'object' ? p.name : p
-        ).slice(0, 3).join(', ') + ((a.products || []).length > 3 ? '...' : '');
+        const productNames = (r.products || [])
+            .map(p => typeof p === 'object' ? p.name : p)
+            .slice(0, 3)
+            .join(', ') + ((r.products || []).length > 3 ? '...' : '');
 
-        const rates = a.interest_rates || {};
+        const rates = r.interest_rates || {};
         const rateText = rates.savings || rates.loan || '-';
 
-        const promoCount = (a.promotions || []).length;
+        const promoCount = (r.promotions || []).length;
 
-        tbody.innerHTML += `
-            <tr>
-                <td class="bank-name">${a.bank_name || r.url}</td>
-                <td>${categories.map(c => `<span class="product-tag">${c}</span>`).join('')}</td>
-                <td>${productNames}</td>
-                <td class="rate-value">${rateText}</td>
-                <td>${promoCount > 0 ? `<span class="product-tag promo-tag">${promoCount} active</span>` : '-'}</td>
-                <td>${a.positioning || 'N/A'}</td>
-            </tr>
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="bank-name">${r.bank_name}</td>
+            <td>${categories.map(c => `<span class="product-tag">${c}</span>`).join('')}</td>
+            <td>${productNames || '-'}</td>
+            <td>${rateText}</td>
+            <td>${promoCount > 0 ? `<span class="product-tag" style="background: rgba(245,158,11,0.2); color: #f59e0b;">${promoCount}</span>` : '-'}</td>
         `;
+        tbody.appendChild(row);
     });
 }
 
 function renderStrategy(strategy) {
-    const container = document.getElementById('strategyDetail');
-    
-    if (typeof strategy === 'string') {
-        try {
-            strategy = JSON.parse(strategy);
-        } catch(e) {
-            container.innerHTML = `<div class="insight-card">${strategy}</div>`;
-            return;
-        }
-    }
-
-    let html = '<h3 style="font-size: 18px; color: #10b981; margin-bottom: 20px;">🎯 Strategic Business Recommendations</h3>';
-
-    // Executive Summary
-    if (strategy.executive_summary) {
-        html += `
-            <div class="strategy-section">
-                <h4>📋 Executive Summary</h4>
-                <div class="insight-card">
-                    <p style="font-size: 15px; line-height: 1.8;">${strategy.executive_summary}</p>
-                </div>
-            </div>
-        `;
-    }
-
-    // Immediate Actions
-    if (strategy.strategic_recommendations?.immediate_actions) {
-        html += `
-            <div class="strategy-section">
-                <h4>⚡ Immediate Action Plan (0-6 months)</h4>
-        `;
-        
-        strategy.strategic_recommendations.immediate_actions.forEach((action, idx) => {
-            html += `
-                <div class="action-item">
-                    <h5>${idx + 1}. ${action.action || action}</h5>
-                    ${action.rationale ? `<p style="color: #94a3b8; font-size: 13px; margin-top: 4px;">${action.rationale}</p>` : ''}
-                    ${action.timeline ? `
-                        <div class="action-meta">
-                            <span>⏱️ ${action.timeline}</span>
-                            ${action.expected_impact ? `<span>📈 ${action.expected_impact}</span>` : ''}
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        });
-        
-        html += '</div>';
-    }
-
-    // Competitor Analysis
-    if (strategy.competitor_analysis) {
-        html += `
-            <div class="strategy-section">
-                <h4>🏛️ Competitive Landscape</h4>
-        `;
-        
-        strategy.competitor_analysis.forEach(comp => {
-            const threatClass = comp.competitive_threat === 'High' ? 'badge-high' : 
-                               comp.competitive_threat === 'Medium' ? 'badge-medium' : 'badge-low';
-            
-            html += `
-                <div class="insight-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <strong style="color: #10b981; font-size: 15px;">${comp.bank}</strong>
-                        <span class="badge ${threatClass}">${comp.competitive_threat} Threat</span>
-                    </div>
-                    <p style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">Position: ${comp.position}</p>
-                    ${comp.strengths?.length ? `<p style="font-size: 13px;"><strong style="color: #10b981;">Strengths:</strong> ${comp.strengths.join(', ')}</p>` : ''}
-                    ${comp.weaknesses?.length ? `<p style="font-size: 13px; margin-top: 4px;"><strong style="color: #ef4444;">Weaknesses:</strong> ${comp.weaknesses.join(', ')}</p>` : ''}
-                </div>
-            `;
-        });
-        
-        html += '</div>';
-    }
-
-    // Market Gaps
-    if (strategy.market_gaps) {
-        html += `
-            <div class="strategy-section">
-                <h4>💡 Market Opportunities</h4>
-                <div class="insight-card info">
-                    <ul style="margin-left: 20px;">
-                        ${strategy.market_gaps.map(gap => `<li style="margin-bottom: 8px;">${gap}</li>`).join('')}
-                    </ul>
-                </div>
-            </div>
-        `;
-    }
-
-    container.innerHTML = html;
-}
-
-function renderStrategyPanel(strategy, results) {
     const panel = document.getElementById('strategyPanel');
     
+    // Handle string strategy
     if (typeof strategy === 'string') {
         try {
             strategy = JSON.parse(strategy);
         } catch(e) {
-            panel.innerHTML = `<h3>🧠 AI Strategic Insights</h3><div class="insight-card">${strategy}</div>`;
+            panel.innerHTML = `<h3>🧠 AI Strategic Insights</h3><div class="insight-card"><p>${strategy}</p></div>`;
             return;
         }
     }
 
     let html = '<h3>🧠 AI Strategic Insights</h3>';
 
-    // Quick insights
-    if (strategy.competitive_landscape) {
+    // Executive Summary
+    if (strategy.executive_summary) {
         html += `
             <div class="insight-card">
-                <h4>🏆 Market Leader</h4>
-                <p>${strategy.competitive_landscape.market_leader}</p>
+                <h4>Executive Summary</h4>
+                <p>${strategy.executive_summary}</p>
             </div>
         `;
     }
 
-    // Key metrics
-    const totalBanks = results.length;
-    const avgProducts = results.reduce((sum, r) => sum + (r.analysis?.products || []).length, 0) / totalBanks;
-    
-    html += `
-        <div class="insight-card info">
-            <h4>📊 Analysis Summary</h4>
-            <p>Đã phân tích <strong>${totalBanks}</strong> ngân hàng</p>
-            <p>Trung bình <strong>${avgProducts.toFixed(1)}</strong> sản phẩm/ngân hàng</p>
-        </div>
-    `;
-
-    // Top recommendations preview
-    if (strategy.strategic_recommendations?.immediate_actions) {
-        const topActions = strategy.strategic_recommendations.immediate_actions.slice(0, 2);
+    // Competitive Landscape
+    if (strategy.competitive_landscape) {
         html += `
-            <div class="insight-card warning">
-                <h4>⚡ Top Priorities</h4>
+            <div class="insight-card">
+                <h4>Market Leader</h4>
+                <p>${strategy.competitive_landscape.market_leader || 'N/A'}</p>
+            </div>
+        `;
+    }
+
+    // Immediate Actions
+    if (strategy.strategic_recommendations?.immediate_actions) {
+        const actions = strategy.strategic_recommendations.immediate_actions;
+        html += `
+            <div class="insight-card" style="border-left-color: #f59e0b;">
+                <h4>Top Priorities</h4>
                 <ul style="margin-left: 16px; margin-top: 8px;">
-                    ${topActions.map(a => `<li style="margin-bottom: 6px; font-size: 13px;">${a.action || a}</li>`).join('')}
+                    ${actions.slice(0, 3).map(a => {
+                        const actionText = typeof a === 'string' ? a : a.action;
+                        return `<li style="margin-bottom: 6px;">${actionText}</li>`;
+                    }).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    // Market Gaps
+    if (strategy.market_gaps?.length) {
+        html += `
+            <div class="insight-card" style="border-left-color: #3b82f6;">
+                <h4>Market Opportunities</h4>
+                <ul style="margin-left: 16px; margin-top: 8px;">
+                    ${strategy.market_gaps.slice(0, 3).map(g => `<li style="margin-bottom: 6px;">${g}</li>`).join('')}
                 </ul>
             </div>
         `;
