@@ -3,38 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Bank Dashboard PRO</title>
+<title>AI Banking Intelligence PRO</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 body {
     margin: 0;
     font-family: "Segoe UI", sans-serif;
-    background: linear-gradient(135deg, #0a7c3b, #0f9d58);
+    background: #0b3d2e;
 }
 
 .header {
+    padding: 18px;
     color: white;
-    padding: 20px;
-    font-size: 22px;
+    font-size: 20px;
     font-weight: bold;
+    background: #0f5e43;
 }
 
 .container {
     display: flex;
-    height: calc(100vh - 70px);
+    height: calc(100vh - 60px);
 }
 
+/* LEFT */
 .left {
-    width: 30%;
-    padding: 20px;
-    background: #ffffff;
-    overflow-y: auto;
-    border-radius: 20px 0 0 20px;
-}
-
-.right {
-    width: 70%;
-    padding: 20px;
+    width: 32%;
+    background: white;
+    padding: 18px;
     overflow-y: auto;
 }
 
@@ -47,50 +44,56 @@ textarea {
 }
 
 button {
-    margin-top: 10px;
-    padding: 12px;
     width: 100%;
-    border-radius: 10px;
-    border: none;
-    background: #0a7c3b;
+    padding: 12px;
+    margin-top: 10px;
+    background: #0f5e43;
     color: white;
+    border: none;
+    border-radius: 10px;
     font-weight: bold;
     cursor: pointer;
 }
 
 .card {
-    background: white;
-    padding: 15px;
-    margin-bottom: 15px;
-    border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    background: #f9f9f9;
+    padding: 12px;
+    margin-top: 12px;
+    border-radius: 10px;
+}
+
+/* RIGHT */
+.right {
+    width: 68%;
+    padding: 18px;
+    overflow-y: auto;
 }
 
 .kpi {
     display: flex;
     gap: 10px;
-    margin-bottom: 15px;
 }
 
 .kpi-box {
     flex: 1;
     background: white;
-    padding: 15px;
-    border-radius: 12px;
+    padding: 12px;
+    border-radius: 10px;
     text-align: center;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
 .chart-box {
     background: white;
-    padding: 20px;
-    border-radius: 12px;
-    margin-bottom: 20px;
+    padding: 12px;
+    margin-top: 15px;
+    border-radius: 10px;
 }
 
 table {
     width: 100%;
+    margin-top: 15px;
     border-collapse: collapse;
+    background: white;
 }
 
 th, td {
@@ -98,44 +101,53 @@ th, td {
     border-bottom: 1px solid #eee;
 }
 
-tr:hover {
-    background: #f9f9f9;
+th {
+    background: #f0f0f0;
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">🏦 AI Bank Dashboard PRO</div>
+<div class="header">🏦 AI BANKING INTELLIGENCE PLATFORM PRO</div>
 
 <div class="container">
 
+<!-- LEFT -->
 <div class="left">
-    <h3>Nhập URL ngân hàng</h3>
-    <textarea id="urls">https://techcombank.com/
+    <h3>Input Bank URLs</h3>
+
+    <textarea id="urls">
+https://techcombank.com/
 https://bidv.com.vn/
 https://www.vietinbank.vn/
-https://www.vietcombank.com.vn/</textarea>
-    <button onclick="analyze()">Phân tích</button>
+https://www.vietcombank.com.vn/
+    </textarea>
 
-    <h3>Chiến lược AI</h3>
-    <div id="strategy" class="card"></div>
+    <button onclick="analyze()">RUN AI ANALYSIS</button>
+
+    <div class="card" id="strategy">
+        <b>Strategy Panel</b>
+    </div>
 </div>
 
+<!-- RIGHT -->
 <div class="right">
 
 <div class="kpi">
     <div class="kpi-box">
         <div id="totalBanks">0</div>
-        <small>Ngân hàng</small>
+        <small>Banks</small>
     </div>
+
     <div class="kpi-box">
-        <div id="topProducts">0</div>
-        <small>Sản phẩm nhiều nhất</small>
+        <div id="totalProducts">0</div>
+        <small>Products</small>
     </div>
+
     <div class="kpi-box">
-        <div id="topPromo">0</div>
-        <small>Ưu đãi nhiều nhất</small>
+        <div id="totalPromo">0</div>
+        <small>Promotions</small>
     </div>
 </div>
 
@@ -147,32 +159,32 @@ https://www.vietcombank.com.vn/</textarea>
     <canvas id="pieChart"></canvas>
 </div>
 
-<div class="card">
-    <h3>Bảng so sánh chi tiết</h3>
-    <table id="resultTable">
-        <thead>
-            <tr>
-                <th>Ngân hàng</th>
-                <th>Sản phẩm</th>
-                <th>Lãi suất</th>
-                <th>Ưu đãi</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-</div>
+<table>
+<thead>
+<tr>
+    <th>Bank</th>
+    <th>Products</th>
+    <th>Rates</th>
+    <th>Promotions</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
 
 </div>
-
 </div>
 
 <script>
+
 let barChart, pieChart;
 
 async function analyze() {
-    const urls = document.getElementById("urls").value.split("\n").filter(u => u);
+    const urls = document.getElementById("urls")
+        .value.split("\n")
+        .map(u => u.trim())
+        .filter(u => u);
 
-    document.getElementById("strategy").innerText = "Đang phân tích...";
+    document.getElementById("strategy").innerHTML = "Running AI...";
 
     const res = await fetch("/analyze", {
         method: "POST",
@@ -182,41 +194,63 @@ async function analyze() {
 
     const data = await res.json();
 
-    renderAll(data.results);
-    document.getElementById("strategy").innerText = data.strategy;
+    render(data);
 }
 
-function renderAll(results) {
+/* ================= RENDER ================= */
+
+function render(data) {
+    const results = data.results || [];
+
     renderTable(results);
     renderCharts(results);
     renderKPI(results);
+    renderStrategy(data.strategy);
 }
 
+/* TABLE */
 function renderTable(results) {
-    const tbody = document.querySelector("#resultTable tbody");
+    const tbody = document.getElementById("tableBody");
     tbody.innerHTML = "";
 
     results.forEach(r => {
-        const a = r.analysis;
+        const a = r.analysis || {};
+
+        const products = (a.products || []).map(p =>
+            typeof p === "string" ? p : (p.name || "")
+        ).join(", ");
+
         tbody.innerHTML += `
-            <tr>
-                <td>${a.bank_name}</td>
-                <td>${(a.products||[]).join(", ")}</td>
-                <td>${a.interest_rates||"-"}</td>
-                <td>${(a.promotions||[]).join(", ")}</td>
-            </tr>
+        <tr>
+            <td>${a.bank_name || r.url}</td>
+            <td>${products}</td>
+            <td>${a.interest_rates || "-"}</td>
+            <td>${(a.promotions || []).join(", ")}</td>
+        </tr>
         `;
     });
 }
 
-function renderCharts(results) {
-    const labels = [];
-    const productCounts = [];
+/* KPI */
+function renderKPI(results) {
+    document.getElementById("totalBanks").innerText = results.length;
+
+    let totalProducts = 0;
+    let totalPromo = 0;
 
     results.forEach(r => {
-        labels.push(r.analysis.bank_name);
-        productCounts.push((r.analysis.products||[]).length);
+        totalProducts += (r.analysis?.products?.length || 0);
+        totalPromo += (r.analysis?.promotions?.length || 0);
     });
+
+    document.getElementById("totalProducts").innerText = totalProducts;
+    document.getElementById("totalPromo").innerText = totalPromo;
+}
+
+/* CHARTS */
+function renderCharts(results) {
+    const labels = results.map(r => r.analysis?.bank_name || "");
+    const productCounts = results.map(r => r.analysis?.products?.length || 0);
 
     if (barChart) barChart.destroy();
     if (pieChart) pieChart.destroy();
@@ -224,29 +258,47 @@ function renderCharts(results) {
     barChart = new Chart(document.getElementById("barChart"), {
         type: "bar",
         data: {
-            labels: labels,
-            datasets: [{ data: productCounts }]
+            labels,
+            datasets: [{
+                label: "Products",
+                data: productCounts
+            }]
         }
     });
 
     pieChart = new Chart(document.getElementById("pieChart"), {
         type: "pie",
         data: {
-            labels: labels,
-            datasets: [{ data: productCounts }]
+            labels,
+            datasets: [{
+                data: productCounts
+            }]
         }
     });
 }
 
-function renderKPI(results) {
-    document.getElementById("totalBanks").innerText = results.length;
+/* STRATEGY */
+function renderStrategy(strategy) {
 
-    let maxProduct = Math.max(...results.map(r => (r.analysis.products||[]).length));
-    let maxPromo = Math.max(...results.map(r => (r.analysis.promotions||[]).length));
+    let s = strategy;
 
-    document.getElementById("topProducts").innerText = maxProduct;
-    document.getElementById("topPromo").innerText = maxPromo;
+    if (typeof s === "string") {
+        try { s = JSON.parse(s); } catch(e) {}
+    }
+
+    document.getElementById("strategy").innerHTML = `
+        <h3>🧠 AI INSIGHTS</h3>
+        <ul>
+            ${(s.insights || []).map(i => `<li>${i}</li>`).join("")}
+        </ul>
+
+        <h3>🚀 STRATEGY</h3>
+        <ul>
+            ${(s.recommendations || []).map(i => `<li>${i}</li>`).join("")}
+        </ul>
+    `;
 }
+
 </script>
 
 </body>
