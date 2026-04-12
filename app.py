@@ -41,15 +41,48 @@ def analyze():
 
                 extracted = extract_data(raw, url)
 
+                # ✅ ENSURE STRUCTURE ALWAYS SAFE
+                if "analysis" not in extracted:
+                    extracted = {
+                        "url": url,
+                        "analysis": {
+                            "bank_name": url.split("//")[-1],
+                            "products": [],
+                            "interest_rates": "",
+                            "promotions": []
+                        }
+                    }
+
             except Exception as e:
                 extracted = {
-                    "bank_name": url,
-                    "error": str(e)
+                    "url": url,
+                    "analysis": {
+                        "bank_name": url.split("//")[-1],
+                        "products": [],
+                        "interest_rates": "",
+                        "promotions": [],
+                        "error": str(e)
+                    }
                 }
 
             results.append(extracted)
 
-        strategy = analyze_strategy(results)
+        # 🔥 SAFE STRATEGY HANDLING
+        try:
+            strategy = analyze_strategy(results)
+
+            # nếu trả string JSON → convert nhẹ
+            if isinstance(strategy, str):
+                strategy = strategy
+
+        except Exception as e:
+            strategy = {
+                "insights": ["Strategy engine error"],
+                "recommendations": [],
+                "strength_leader": "",
+                "weakness_leader": "",
+                "error": str(e)
+            }
 
         return jsonify({
             "status": "success",
