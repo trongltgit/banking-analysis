@@ -4,6 +4,7 @@ from crawler import crawl_website
 from extractor import extract_data
 from llm import analyze_strategy
 import os
+import traceback
 
 app = Flask(__name__)
 CORS(app)
