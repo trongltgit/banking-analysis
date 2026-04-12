@@ -1,13 +1,16 @@
-from playwright.sync_api import sync_playwright
+import requests
+from bs4 import BeautifulSoup
 
 def crawl_website(url):
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
-            page.goto(url, timeout=60000)
-            content = page.content()
-            browser.close()
-            return content
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+
+        res = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(res.text, "html.parser")
+
+        return soup.get_text(separator=" ", strip=True)
+
     except Exception as e:
-        return f"Error crawling: {str(e)}"
+        return f"Error: {str(e)}"
