@@ -11,25 +11,16 @@ app = Flask(__name__)
 CORS(app)
 
 
-# =========================
-# HOME PAGE
-# =========================
 @app.route("/")
 def home():
     return render_template("dashboard.html")
 
 
-# =========================
-# HEALTH CHECK
-# =========================
 @app.route("/health")
 def health():
     return {"status": "ok"}
 
 
-# =========================
-# ANALYZE API
-# =========================
 @app.route("/analyze", methods=["POST"])
 def analyze():
     try:
@@ -42,57 +33,50 @@ def analyze():
                 "message": "No URLs provided"
             }), 400
 
-        # 🔥 HARD LIMIT để tránh OOM
-        urls = urls[:2]
+        # 🔥 CLEAN INPUT
+        urls = [u.strip() for u in urls if u.strip()]
 
         results = []
 
-        for url in urls:
-            if not url or not url.strip():
-                continue
-
+        # =========================
+        # PROCESS DYNAMIC (NO LIMIT)
+        # =========================
+        for idx, url in enumerate(urls):
             try:
-                print(f"Processing: {url}")
+                print(f"[{idx+1}/{len(urls)}] Processing: {url}")
 
-                # =================
-                # STEP 1: CRAWL
-                # =================
                 raw = crawl_website(url)
 
-                if not raw:
-                    raise Exception("Empty content")
+                # 🔥 truncate để bảo vệ RAM + LLM
+                raw = raw[:2000]
 
-                # 🔥 GIẢM SIZE MẠNH
-                raw = raw[:800]
-
-                # =================
-                # STEP 2: EXTRACT AI
-                # =================
                 extracted = extract_data(raw, url)
 
             except Exception as inner_err:
-                print("INNER ERROR:", inner_err)
-
                 extracted = {
                     "url": url,
-                    "analysis": f"Error: {str(inner_err)}"
+                    "analysis": {
+                        "bank_name": url,
+                        "products": [],
+                        "interest_rates": "",
+                        "promotions": [],
+                        "error": str(inner_err)
+                    }
                 }
 
             results.append(extracted)
 
-        # =================
-        # STEP 3: STRATEGY (OPTIONAL)
-        # =================
-        strategy = "Skipped"
-
+        # =========================
+        # STRATEGY (OPTIONAL FAIL SAFE)
+        # =========================
         try:
             strategy = analyze_strategy(results)
         except Exception as e:
-            print("STRATEGY ERROR:", e)
             strategy = f"Strategy error: {str(e)}"
 
         return jsonify({
             "status": "success",
+            "total": len(results),   # ✅ thêm để frontend dùng
             "results": results,
             "strategy": strategy
         })
@@ -106,9 +90,6 @@ def analyze():
         }), 500
 
 
-# =========================
-# RUN LOCAL / RENDER
-# =========================
 if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
