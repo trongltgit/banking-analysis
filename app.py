@@ -18,7 +18,7 @@ def home():
 
 @app.route("/health")
 def health():
-    return {"status": "ok", "version": "2.2-stable"}
+    return {"status": "ok", "version": "3.0-deep-ai"}
 
 def safe_analysis(item):
     """Normalize data"""
@@ -45,9 +45,9 @@ def safe_analysis(item):
             "market_position": "Unknown",
             "competitive_threat_level": "Unknown"
         }),
+        "product_gaps_vs_market": a.get("product_gaps_vs_market", []),
         "url": item.get("url"),
-        "extraction_quality": item.get("extraction_quality", "unknown"),
-        "error": item.get("error")
+        "extraction_quality": item.get("extraction_quality", "unknown")
     }
 
 @app.route("/analyze", methods=["POST"])
@@ -59,61 +59,76 @@ def analyze():
         if not urls:
             return jsonify({"status": "error", "message": "No URLs provided"}), 400
 
-        # Giới hạn số URL để tránh rate limit
-        if len(urls) > 5:
-            urls = urls[:5]
-            print(f"⚠️ Limited to 5 URLs to avoid rate limits")
+        # Giới hạn 4 URLs để tránh timeout
+        if len(urls) > 4:
+            urls = urls[:4]
 
         results = []
+        errors = []
+        
         print(f"\n{'='*60}")
-        print(f"🚀 DEEP ANALYSIS: {len(urls)} BANKS")
+        print(f"🚀 DEEP AI ANALYSIS: {len(urls)} BANKS")
         print(f"{'='*60}\n")
 
-        # Xử lý TUẦN TỰ (không parallel) để tránh rate limit
+        # Xử lý tuần tự với delay
         for idx, url in enumerate(urls, 1):
             print(f"\n[{idx}/{len(urls)}] 🔍 {url}")
             
             try:
                 # Crawl
                 raw = crawl_website(url)
-                if raw.startswith("ERROR_CRAWL"):
-                    print(f"      ⚠️ Crawl failed: {raw[:50]}")
+                crawl_status = "✅" if not raw.startswith("ERROR_CRAWL") else "⚠️"
+                print(f"      {crawl_status} Crawled {len(raw)} chars")
                 
-                # Delay trước khi gọi AI
-                time.sleep(1)
+                # Delay trước AI
+                time.sleep(2)
                 
-                # AI Extraction
+                # AI Extraction - KHÔNG try-catch để lỗi được báo ra
                 extracted = extract_data(raw, url)
+                
                 quality = extracted.get("extraction_quality", "unknown")
                 product_count = len(extracted.get("analysis", {}).get("products", []))
                 
-                print(f"      📄 {len(raw)} chars | 🤖 {quality} | 📦 {product_count} products")
+                print(f"      ✅ AI Analysis: {quality} | {product_count} products")
                 
-                # Delay sau mỗi lần gọi API
-                time.sleep(1.5)
+                # Delay sau AI
+                time.sleep(2)
                 
             except Exception as e:
-                print(f"      ❌ Error: {str(e)[:80]}")
+                error_msg = str(e)
+                print(f"      ❌ AI Analysis failed: {error_msg[:80]}")
+                errors.append(f"{url}: {error_msg}")
+                
+                # Vẫn tạo structure nhưng đánh dấu lỗi rõ ràng
                 domain = url.split("//")[-1].split("/")[0].replace("www.", "").upper()
                 extracted = {
                     "url": url,
                     "analysis": {
-                        "bank_name": domain,
+                        "bank_name": f"{domain} (LỖI: {error_msg[:30]})",
                         "products": [],
-                        "strategic_analysis": {"positioning": f"Error: {str(e)[:30]}"},
-                        "competitive_assessment": {"strengths": [], "weaknesses": ["Processing error"]}
+                        "strategic_analysis": {"positioning": f"Error: {error_msg[:50]}"},
+                        "competitive_assessment": {"strengths": [], "weaknesses": [error_msg]}
                     },
                     "extraction_quality": "error"
                 }
 
             results.append(safe_analysis(extracted))
 
+        # Nếu tất cả đều lỗi, báo lỗi tổng
+        if len(errors) == len(urls):
+            return jsonify({
+                "status": "error",
+                "message": "Tất cả các ngân hàng đều phân tích thất bại",
+                "errors": errors,
+                "suggestion": "Có thể do rate limit Groq API. Vui lòng đợi 1 phút và thử lại với ít URL hơn (2-3)."
+            }), 503
+
         print(f"\n{'='*60}")
         print("🧠 GENERATING STRATEGY...")
         print(f"{'='*60}\n")
 
-        # Delay trước khi gọi strategy
-        time.sleep(2)
+        # Delay trước strategy
+        time.sleep(3)
         
         # Strategy Generation
         try:
@@ -121,19 +136,17 @@ def analyze():
             print("      ✅ Strategy generated")
             
             if isinstance(strategy, str):
-                try:
-                    strategy = json.loads(strategy)
-                except:
-                    pass
+                strategy = json.loads(strategy)
                     
         except Exception as e:
-            print(f"      ❌ Strategy error: {str(e)[:80]}")
+            print(f"      ❌ Strategy failed: {str(e)[:80]}")
+            # Strategy lỗi không fail cả request, chỉ báo trong response
             strategy = {
-                "executive_summary": "Strategy generation failed due to rate limits. Please try with fewer banks.",
-                "competitive_ranking": [{"rank": i+1, "bank": r.get("bank_name", "Unknown"), "position": "Unknown"} for i, r in enumerate(results)],
+                "executive_summary": f"Strategy generation error: {str(e)[:100]}. Các phân tích ngân hàng riêng lẻ vẫn hợp lệ.",
+                "competitive_ranking": [],
                 "strategic_recommendations": {
-                    "overall_strategy": "Retry with 2-3 banks maximum",
-                    "immediate_actions": ["Wait 1 minute", "Reduce number of URLs"]
+                    "overall_strategy": "Error in strategy synthesis",
+                    "immediate_actions": ["Review individual bank analysis below", "Retry strategy generation later"]
                 }
             }
 
@@ -141,10 +154,12 @@ def analyze():
             "status": "success",
             "results": results,
             "strategy": strategy,
+            "errors": errors if errors else None,
             "meta": {
                 "banks_analyzed": len(results),
-                "total_products": sum(len(r["products"]) for r in results),
-                "note": "Rate limiting may affect results quality"
+                "successful": len([r for r in results if r["extraction_quality"] != "error"]),
+                "failed": len(errors),
+                "total_products": sum(len(r["products"]) for r in results)
             }
         })
 
@@ -152,7 +167,8 @@ def analyze():
         traceback.print_exc()
         return jsonify({
             "status": "error", 
-            "message": str(e)
+            "message": str(e),
+            "traceback": traceback.format_exc() if os.environ.get("DEBUG") else None
         }), 500
 
 if __name__ == "__main__":
