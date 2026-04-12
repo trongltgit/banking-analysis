@@ -61,7 +61,7 @@ def clean_json(text):
 def analyze_strategy(results):
     """Tạo chiến lược đơn giản hơn để tránh rate limit"""
     
-    # Format data ngắn gọn
+    # Format data ngắn gọn - PYTHON SYNTAX (không phải JS)
     banks_summary = []
     for r in results:
         a = r.get("analysis", {})
@@ -108,17 +108,23 @@ JSON ngắn gọn."""
         
     except Exception as e:
         print(f"      ❌ Strategy error: {str(e)[:80]}")
-        return {
-            "executive_summary": f"Error generating strategy: {str(e)[:50]}",
-            "competitive_ranking": banks_summary.map((b, i) => ({
-                "rank": i+1,
+        
+        # PYTHON SYNTAX ĐÚNG - dùng list comprehension
+        ranking = []
+        for i, b in enumerate(banks_summary):
+            ranking.append({
+                "rank": i + 1,
                 "bank": b.get("name", "Unknown"),
                 "position": "Unknown",
                 "score": "-",
                 "key_strength": "N/A"
-            })),
+            })
+        
+        return {
+            "executive_summary": f"Error generating strategy: {str(e)[:50]}",
+            "competitive_ranking": ranking,
             "strategic_recommendations": {
-                "overall_strategy": "Please try again with fewer banks or wait a moment",
+                "overall_strategy": "Retry with 2-3 banks maximum",
                 "immediate_actions": ["Check API rate limits", "Retry in 1 minute"]
             },
             "market_opportunities": []
