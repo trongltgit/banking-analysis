@@ -6,7 +6,7 @@ import time
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-def call_groq_api(prompt, model="llama-3.1-70b-versatile", max_tokens=1500, retries=3):
+def call_groq_api(prompt, model="llama-3.3-70b-versatile", max_tokens=1500, retries=3):
     api_key = os.environ.get("GROQ_API_KEY_BK")
     if not api_key:
         raise Exception("GROQ_API_KEY_BK not set")
