@@ -1,33 +1,46 @@
 from groq import Groq
 import os
 
-api_key = os.environ["GROQ_API_KEY_BK"]
-
-client = Groq(api_key=api_key)
+# 🔥 dùng đúng ENV của bạn
+client = Groq(api_key=os.getenv("GROQ_API_KEY_BK"))
 
 
 def extract_data(text, url):
     try:
+        if not text or len(text.strip()) == 0:
+            return {
+                "url": url,
+                "analysis": "No content"
+            }
+
+        # 🔥 LIMIT TEXT CỨNG
+        text = text[:1000]
+
+        prompt = f"""
+        Phân tích nội dung website ngân hàng:
+
+        - Tên ngân hàng
+        - Sản phẩm chính
+        - Lãi suất (nếu có)
+        - Ưu đãi
+
+        Nội dung:
+        {text}
+
+        Trả về JSON:
+        {{
+            "bank": "...",
+            "products": "...",
+            "interest": "...",
+            "offers": "..."
+        }}
+        """
+
         res = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{
-                "role": "user",
-                "content": f"""
-                Trích xuất thông tin ngân hàng từ nội dung:
-
-                {text[:3000]}
-
-                JSON:
-                {{
-                    "bank": "...",
-                    "products": "...",
-                    "interest": "...",
-                    "offers": "..."
-                }}
-                """
-            }],
+            model="llama3-8b-8192",
+            messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
-            max_tokens=800
+            max_tokens=300,   # 🔥 giảm mạnh
         )
 
         return {
@@ -36,4 +49,7 @@ def extract_data(text, url):
         }
 
     except Exception as e:
-        raise RuntimeError(f"LLM extract_data failed for {url}: {str(e)}")
+        return {
+            "url": url,
+            "analysis": f"LLM error: {str(e)}"
+        }
