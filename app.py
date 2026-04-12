@@ -42,22 +42,38 @@ def analyze():
                 "message": "No URLs provided"
             }), 400
 
+        # 🔥 LIMIT CỨNG để tránh OOM
+        urls = urls[:2]
+
         results = []
 
         for url in urls:
             if not url or not url.strip():
                 continue
 
-            # Crawl
-            raw = crawl_website(url)
+            try:
+                # Crawl
+                raw = crawl_website(url)
 
-            # Extract AI
-            extracted = extract_data(raw, url)
+                # 🔥 giảm size trước khi gửi AI
+                raw = raw[:1000]
+
+                # Extract AI
+                extracted = extract_data(raw, url)
+
+            except Exception as inner_err:
+                extracted = {
+                    "url": url,
+                    "analysis": f"Error: {str(inner_err)}"
+                }
 
             results.append(extracted)
 
-        # Strategy AI
-        strategy = analyze_strategy(results)
+        # 🔥 OPTIONAL: tắt strategy để tránh crash
+        try:
+            strategy = analyze_strategy(results)
+        except Exception as e:
+            strategy = f"Strategy error: {str(e)}"
 
         return jsonify({
             "status": "success",
@@ -66,7 +82,6 @@ def analyze():
         })
 
     except Exception as e:
-        # 👇 LOG FULL ERROR RA CONSOLE (QUAN TRỌNG)
         traceback.print_exc()
 
         return jsonify({
