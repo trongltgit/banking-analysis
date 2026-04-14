@@ -1,9 +1,10 @@
 services:
   - type: web
     name: banking-analysis
-    runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --timeout 300 --workers 1
+    runtime: docker          # ← Đổi thành docker
+    dockerfilePath: Dockerfile
+    buildCommand: ""         # Docker sẽ tự build
+    startCommand: ""         # CMD trong Dockerfile sẽ dùng
     envVars:
       - key: GROQ_API_KEY_BK
         sync: false
