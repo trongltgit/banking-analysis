@@ -10,6 +10,12 @@ from crawler import crawl_website
 from extractor import extract_data
 from llm import analyze_strategy
 
+
+import pandas as pd
+import PyPDF2
+from io import BytesIO
+from flask import request, jsonify
+
 app = Flask(__name__)
 CORS(app)
 
@@ -200,6 +206,96 @@ def analyze():
         return jsonify({
             "status": "error", 
             "message": str(e)
+
+
+# ====================== PARSER MỚI ======================
+def parse_uploaded_file(file_stream, filename):
+    ext = filename.lower().split('.')[-1]
+    data = []
+
+    if ext in ['xlsx', 'xls']:
+        df = pd.read_excel(file_stream)
+    elif ext == 'csv':
+        df = pd.read_csv(file_stream)
+    elif ext == 'pdf':
+        reader = PyPDF2.PdfReader(file_stream)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() or ""
+        # Dùng LLM parse PDF thành structured data
+        prompt = f"""Trích xuất danh sách ngân hàng từ văn bản sau. Trả về JSON array:
+        [{{"ten_ngan_hang": "...", "loai_san_pham": ["sản phẩm 1", "sản phẩm 2"]}}]
+        Văn bản: {text[:15000]}"""
+        try:
+            raw = call_groq_api(prompt, max_tokens=1200)  # hàm bạn đã có trong llm.py
+            data = json.loads(raw) if isinstance(raw, str) else raw
+        except:
+            return None, "Không parse được PDF"
+        return data, None
+    else:
+        return None, "Định dạng file không hỗ trợ"
+
+    # Chuẩn hóa cột cho XLSX/CSV
+    col_map = {
+        'ten_ngan_hang': ['ten_ngan_hang', 'ngan_hang', 'bank_name', 'bank'],
+        'loai_san_pham': ['loai_san_pham', 'san_pham', 'products', 'product_types']
+    }
+    df.columns = df.columns.str.strip().str.lower()
+
+    for idx, row in df.iterrows():
+        bank = None
+        for possible in col_map['ten_ngan_hang']:
+            if possible in df.columns:
+                bank = str(row[possible]).strip()
+                break
+        products = []
+        for possible in col_map['loai_san_pham']:
+            if possible in df.columns:
+                val = row[possible]
+                if isinstance(val, str):
+                    products = [x.strip() for x in val.split(',') if x.strip()]
+                break
+        if bank:
+            data.append({"ten_ngan_hang": bank, "loai_san_pham": products})
+
+    return data, None
+
+
+# ====================== ROUTE MỚI ======================
+@app.route('/api/analyze-upload', methods=['POST'])
+def analyze_upload():
+    if 'file' not in request.files:
+        return jsonify({"error": "Không có file"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "File rỗng"}), 400
+
+    # Parse file
+    file_stream = BytesIO(file.read())
+    results, err = parse_uploaded_file(file_stream, file.filename)
+    
+    if err:
+        return jsonify({"error": err}), 400
+    if not results or len(results) == 0:
+        return jsonify({"error": "KẾT QUẢ TRỐNG - File không có dữ liệu ngân hàng hợp lệ!"}), 400
+
+    # Chuẩn bị dữ liệu cho analyze_strategy (dùng chung hàm bạn đã có)
+    prepared = []
+    for item in results:
+        prepared.append({
+            "analysis": {
+                "bank_name": item["ten_ngan_hang"],
+                "products": item["loai_san_pham"],
+                "strategic_analysis": {"positioning": "Từ file upload"},
+                "competitive_assessment": {"strengths": []}
+            }
+        })
+
+    # Gọi strategy LLM
+    strategy = analyze_strategy(prepared)
+
+    return jsonify(strategy)
         }), 500
 
 if __name__ == "__main__":
