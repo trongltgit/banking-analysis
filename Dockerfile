@@ -1,8 +1,8 @@
-FROM python:3.11-bookworm   # Dùng bookworm thay vì slim để có nhiều thư viện hơn
+FROM python:3.11-bookworm
 
 WORKDIR /app
 
-# Cài đầy đủ build dependencies
+# Cài đầy đủ dependencies để build
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -14,19 +14,17 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip và cài wheel trước
-RUN pip install --no-cache-dir --upgrade pip wheel setuptools
+# Upgrade pip và cài wheel + Cython cũ (quan trọng nhất)
+RUN pip install --no-cache-dir --upgrade pip wheel setuptools \
+    && pip install --no-cache-dir "Cython<3.0"  # Dùng Cython 0.29.x để tránh lỗi attribute
 
-# Cài pandas + numpy bằng wheel trước để tránh build từ source
-RUN pip install --no-cache-dir \
-    numpy==1.26.4 \
-    pandas==2.2.2
+# Cài numpy + pandas trước bằng wheel (rất quan trọng)
+RUN pip install --no-cache-dir numpy==1.26.4 pandas==2.2.2
 
-# Cài các package còn lại
+# Copy và cài requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy code
 COPY . .
 
 EXPOSE 10000
