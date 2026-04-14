@@ -6,6 +6,12 @@ import time
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
+def analyze_strategy(results):
+    if not results or len(results) == 0:
+        return {
+            "error": "KẾT QUẢ TRỐNG - Không có dữ liệu ngân hàng nào để phân tích!"
+        }
+
 def call_groq_api(prompt, model="llama-3.3-70b-versatile", max_tokens=1500, retries=3):
     api_key = os.environ.get("GROQ_API_KEY_BK")
     if not api_key:
