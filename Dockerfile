@@ -2,26 +2,23 @@ FROM python:3.11-bookworm
 
 WORKDIR /app
 
-# Cài đầy đủ dependencies để build
+# Cài system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     python3-dev \
-    libpq-dev \
-    libssl-dev \
-    libffi-dev \
     build-essential \
-    pkg-config \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip và cài wheel + Cython cũ (quan trọng nhất)
+# Upgrade pip và cài Cython cũ + wheel
 RUN pip install --no-cache-dir --upgrade pip wheel setuptools \
-    && pip install --no-cache-dir "Cython<3.0"  # Dùng Cython 0.29.x để tránh lỗi attribute
+    && pip install --no-cache-dir "Cython<3.0" numpy==1.26.4
 
-# Cài numpy + pandas trước bằng wheel (rất quan trọng)
-RUN pip install --no-cache-dir numpy==1.26.4 pandas==2.2.2
+# BUỘC CÀI PANDAS BẰNG WHEEL, KHÔNG CHO BUILD TỪ SOURCE
+RUN pip install --no-cache-dir --no-build-isolation --no-deps pandas==2.2.2
 
-# Copy và cài requirements
+# Cài các package còn lại
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
