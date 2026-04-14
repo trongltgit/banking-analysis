@@ -1,10 +1,9 @@
 services:
   - type: web
     name: banking-analysis
-    runtime: docker          # ← Đổi thành docker
+    runtime: docker          # Chú ý dòng này
     dockerfilePath: Dockerfile
-    buildCommand: ""         # Docker sẽ tự build
-    startCommand: ""         # CMD trong Dockerfile sẽ dùng
+    plan: free               # Hoặc gói bạn đang dùng
     envVars:
       - key: GROQ_API_KEY_BK
         sync: false
