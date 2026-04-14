@@ -549,6 +549,83 @@ https://www.vietcombank.com.vn/</textarea>
         </div>
     </div>
 
+
+
+    
+<!-- Tab Upload File - ĐÃ THÊM -->
+            <div id="file-section" style="display:none;">
+                <h3 style="margin-top: 20px;">📤 Upload File Dữ Liệu Ngân Hàng</h3>
+                <div class="file-upload-area">
+                    <input type="file" id="fileInput" accept=".xlsx,.csv,.pdf" style="width:100%; padding:12px; background:rgba(15,23,42,0.6); border-radius:8px; color:#e2e8f0;">
+                    <p style="font-size:13px; color:#94a3b8; margin-top:10px;">
+                        Hỗ trợ: XLSX, CSV, PDF<br>
+                        Cần có cột: <strong>ten_ngan_hang</strong>, <strong>loai_san_pham</strong>
+                    </p>
+                </div>
+                <button class="btn-primary" onclick="analyzeFromFile()" id="uploadBtn">
+                    📤 Upload & Phân Tích Bằng AI
+                </button>
+            </div>
+
+
+
+// ==================== THÊM MỚI - TAB VÀ UPLOAD ====================
+function switchTab(tab) {
+    if (tab === 0) {
+        document.getElementById('url-section').style.display = 'block';
+        document.getElementById('file-section').style.display = 'none';
+        document.getElementById('tab-url').classList.add('active');
+        document.getElementById('tab-file').classList.remove('active');
+    } else {
+        document.getElementById('url-section').style.display = 'none';
+        document.getElementById('file-section').style.display = 'block';
+        document.getElementById('tab-url').classList.remove('active');
+        document.getElementById('tab-file').classList.add('active');
+    }
+}
+
+async function analyzeFromFile() {
+    const fileInput = document.getElementById('fileInput');
+    const btn = document.getElementById('uploadBtn');
+    
+    if (!fileInput.files.length) {
+        alert('Vui lòng chọn file!');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Đang xử lý file...';
+
+    try {
+        const res = await fetch('/api/analyze-upload', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        renderAll({results: [], strategy: data});
+
+    } catch (error) {
+        document.getElementById('strategyContainer').innerHTML = `
+            <div class="error-display">
+                <h3>❌ Lỗi Upload</h3>
+                <p>${error.message}</p>
+            </div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '📤 Upload & Phân Tích Bằng AI';
+    }
+}
+
+
+
+
+    
     <!-- RIGHT PANEL: So sánh & Chiến lược tổng thể -->
     <div class="right-panel">
         <div class="panel-header">📊 Phân Tích Cạnh Tranh & Chiến Lược Tổng Thể</div>
