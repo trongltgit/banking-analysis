@@ -3,16 +3,15 @@ import traceback
 import json
 import time
 import hashlib
+import csv
+import io
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 
 from crawler import crawl_website
 from extractor import extract_data
-from llm import analyze_strategy, call_groq_api # Đảm bảo call_groq_api có trong llm.py
-
-import pandas as pd
+from llm import analyze_strategy, call_groq_api
 import PyPDF2
-from io import BytesIO
 
 app = Flask(__name__)
 CORS(app)
@@ -30,7 +29,7 @@ def home():
 
 @app.route("/health")
 def health():
-    return {"status": "ok", "version": "3.1-cached"}
+    return {"status": "ok", "version": "3.2-no-pandas"}
 
 def safe_analysis(item):
     """Normalize data"""
@@ -87,8 +86,10 @@ def analyze():
                 time.sleep(1)
                 extracted = extract_data(raw, url)
                 results.append(safe_analysis(extracted))
-                if idx < len(urls): time.sleep(2)
+                if idx < len(urls): 
+                    time.sleep(2)
             except Exception as e:
+                print(f"Error processing {url}: {str(e)}")
                 errors.append(f"{url}: {str(e)}")
 
         if len(errors) == len(urls) and len(urls) > 0:
@@ -96,7 +97,10 @@ def analyze():
 
         strategy = analyze_strategy(results)
         if isinstance(strategy, str):
-            strategy = json.loads(strategy)
+            try:
+                strategy = json.loads(strategy)
+            except:
+                strategy = {"executive_summary": "Error parsing strategy", "competitive_ranking": []}
 
         response_data = {
             "status": "success",
@@ -112,41 +116,96 @@ def analyze():
         traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# ====================== PARSER MỚI ======================
+# ====================== FILE UPLOAD - KHÔNG DÙNG PANDAS ======================
 def parse_uploaded_file(file_stream, filename):
     ext = filename.lower().split('.')[-1]
     data = []
 
     try:
         if ext in ['xlsx', 'xls']:
-            df = pd.read_excel(file_stream)
+            # Đọc Excel bằng openpyxl (không cần pandas)
+            from openpyxl import load_workbook
+            wb = load_workbook(file_stream)
+            ws = wb.active
+            
+            # Tìm header row
+            headers = []
+            for cell in ws[1]:
+                headers.append(str(cell.value).lower().strip() if cell.value else '')
+            
+            # Tìm cột cần thiết
+            bank_col = None
+            prod_col = None
+            
+            for idx, h in enumerate(headers):
+                if h in ['ten_ngan_hang', 'ngan_hang', 'bank_name', 'bank', 'tên ngân hàng']:
+                    bank_col = idx
+                if h in ['loai_san_pham', 'san_pham', 'products', 'loại sản phẩm']:
+                    prod_col = idx
+            
+            if bank_col is None:
+                return None, "Không tìm thấy cột tên ngân hàng (ten_ngan_hang/bank_name)"
+            
+            # Đọc data
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if len(row) > bank_col and row[bank_col]:
+                    bank = str(row[bank_col]).strip()
+                    prods = []
+                    if prod_col is not None and len(row) > prod_col and row[prod_col]:
+                        prod_val = row[prod_col]
+                        if isinstance(prod_val, str):
+                            prods = [x.strip() for x in prod_val.split(',') if x.strip()]
+                        else:
+                            prods = [str(prod_val)]
+                    data.append({"ten_ngan_hang": bank, "loai_san_pham": prods})
+                    
         elif ext == 'csv':
-            df = pd.read_csv(file_stream)
+            # Đọc CSV thuần
+            content = file_stream.read().decode('utf-8')
+            reader = csv.DictReader(io.StringIO(content))
+            
+            for row in reader:
+                # Tìm cột tên ngân hàng
+                bank = None
+                for key in ['ten_ngan_hang', 'ngan_hang', 'bank_name', 'bank', 'tên ngân hàng']:
+                    if key in row and row[key]:
+                        bank = row[key].strip()
+                        break
+                
+                # Tìm cột sản phẩm
+                prods = []
+                for key in ['loai_san_pham', 'san_pham', 'products', 'loại sản phẩm']:
+                    if key in row and row[key]:
+                        prod_val = row[key]
+                        prods = [x.strip() for x in str(prod_val).split(',') if x.strip()]
+                        break
+                
+                if bank:
+                    data.append({"ten_ngan_hang": bank, "loai_san_pham": prods})
+                    
         elif ext == 'pdf':
             reader = PyPDF2.PdfReader(file_stream)
             text = "".join([page.extract_text() or "" for page in reader.pages])
-            prompt = f"Trích xuất danh sách ngân hàng từ văn bản sau. Trả về JSON array: [{{'ten_ngan_hang': '...', 'loai_san_pham': []}}]. Văn bản: {text[:10000]}"
+            prompt = f"""Trích xuất danh sách ngân hàng từ văn bản sau. 
+            Trả về JSON array: [{{'ten_ngan_hang': '...', 'loai_san_pham': []}}]. 
+            Văn bản: {text[:8000]}"""
             raw = call_groq_api(prompt)
-            return (json.loads(raw) if isinstance(raw, str) else raw), None
+            try:
+                if isinstance(raw, str):
+                    return json.loads(raw), None
+                return raw, None
+            except:
+                return None, "Không thể parse PDF bằng AI"
         else:
-            return None, "Định dạng file không hỗ trợ"
+            return None, "Định dạng file không hỗ trợ (chỉ hỗ trợ .xlsx, .csv, .pdf)"
 
-        col_map = {
-            'ten_ngan_hang': ['ten_ngan_hang', 'ngan_hang', 'bank_name', 'bank'],
-            'loai_san_pham': ['loai_san_pham', 'san_pham', 'products']
-        }
-        df.columns = df.columns.str.strip().str.lower()
-
-        for _, row in df.iterrows():
-            bank = next((str(row[c]).strip() for c in col_map['ten_ngan_hang'] if c in df.columns), None)
-            prods = next((row[c] for c in col_map['loai_san_pham'] if c in df.columns), "")
-            if isinstance(prods, str):
-                prods = [x.strip() for x in prods.split(',') if x.strip()]
-            if bank:
-                data.append({"ten_ngan_hang": bank, "loai_san_pham": prods})
+        if not data:
+            return None, "Không tìm thấy dữ liệu trong file"
+            
         return data, None
+        
     except Exception as e:
-        return None, str(e)
+        return None, f"Lỗi parse file: {str(e)}"
 
 @app.route('/api/analyze-upload', methods=['POST'])
 def analyze_upload():
@@ -154,13 +213,27 @@ def analyze_upload():
         return jsonify({"error": "Không có file"}), 400
 
     file = request.files['file']
-    file_stream = BytesIO(file.read())
+    if file.filename == '':
+        return jsonify({"error": "File rỗng"}), 400
+        
+    file_stream = io.BytesIO(file.read())
     results, err = parse_uploaded_file(file_stream, file.filename)
     
-    if err: return jsonify({"error": err}), 400
+    if err: 
+        return jsonify({"error": err}), 400
+    
+    if not results:
+        return jsonify({"error": "Không parse được dữ liệu"}), 400
     
     prepared = [{"analysis": {"bank_name": i["ten_ngan_hang"], "products": i["loai_san_pham"]}} for i in results]
     strategy = analyze_strategy(prepared)
+    
+    if isinstance(strategy, str):
+        try:
+            strategy = json.loads(strategy)
+        except:
+            strategy = {"executive_summary": "Error", "competitive_ranking": []}
+            
     return jsonify(strategy)
 
 if __name__ == "__main__":
