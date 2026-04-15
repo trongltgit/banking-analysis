@@ -108,7 +108,7 @@ Trả về DUY NHẤT một JSON object với key CHỮ HOA theo cấu trúc:
       "Competitive_score": {{"Product_breadth": 8, "Digital_capability": 7, "Pricing_competitiveness": 8, "Brand_strength": 9, "Overall": 8}},
       "Key_threats": ["..."], "Key_opportunities": ["..."]}}
   ],
-  "Product_comparison_matrix": {{"Savings": {{"Leader": "Bank A", "Gap_analysis": "..."}}},
+  "Product_comparison_matrix": {{"Savings": {{"Leader": "Bank A", "Gap_analysis": "..."}},
   "Strategic_recommendations": {{
     "Overall_strategy": "...",
     "Product_strategy": "...",
