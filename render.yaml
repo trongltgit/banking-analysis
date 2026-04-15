@@ -1,7 +1,7 @@
 services:
   - type: web
     name: banking-analysis
-    runtime: docker          # Quan trọng: phải là docker
+    runtime: docker
     dockerfilePath: Dockerfile
     plan: free
     envVars:
