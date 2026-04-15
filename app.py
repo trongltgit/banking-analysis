@@ -100,8 +100,8 @@ def safe_analysis(item):
         "extraction_quality": item.get("extraction_quality", "unknown")
     }
 
-@app.route("/analyze", methods=["POST"])
-def analyze():
+@app.route("/Analyze", methods=["POST"])
+def Analyze():
     try:
         data = request.get_json(force=True)
         urls = data.get("urls", [])
