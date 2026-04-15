@@ -6,4 +6,4 @@ groq==0.4.2
 gunicorn==21.2.0
 openpyxl==3.1.5
 PyPDF2==3.0.1
-# Không để pandas và numpy ở đây để tránh bị ép biên dịch từ source
+# pandas và numpy được cài riêng trong Dockerfile từ binary wheels
