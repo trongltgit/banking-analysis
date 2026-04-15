@@ -1,9 +1,9 @@
 services:
   - type: web
     name: banking-analysis
-    runtime: docker          # Chú ý dòng này
+    runtime: docker          # Quan trọng: phải là docker
     dockerfilePath: Dockerfile
-    plan: free               # Hoặc gói bạn đang dùng
+    plan: free
     envVars:
       - key: GROQ_API_KEY_BK
         sync: false
