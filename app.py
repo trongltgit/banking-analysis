@@ -29,33 +29,73 @@ def home():
 
 @app.route("/health")
 def health():
-    return {"status": "ok", "version": "3.2-no-pandas"}
+    return {"status": "ok", "version": "3.3-camel-case"}
+
+def convert_to_camel_case(obj):
+    """Chuyển đổi tất cả key trong dict từ snake_case sang Camel_Case"""
+    if isinstance(obj, dict):
+        return {convert_key(k): convert_to_camel_case(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_to_camel_case(item) for item in obj]
+    else:
+        return obj
+
+def convert_key(key):
+    """Chuyển snake_case sang Camel_Case (viết hoa chữ cái đầu mỗi từ)"""
+    if not isinstance(key, str):
+        return key
+    
+    # Giữ nguyên các key đặc biệt
+    if key in ['url', 'extraction_quality']:
+        return key
+    
+    # Chuyển đổi: bank_name -> Bank_name, executive_summary -> Executive_summary
+    parts = key.split('_')
+    return '_'.join([p.capitalize() for p in parts])
 
 def safe_analysis(item):
-    """Normalize data"""
+    """Normalize data với key chữ hoa để match JavaScript"""
     a = item.get("analysis", {})
+    
+    # Chuyển đổi strategic_analysis sang Camel_Case
+    strategic = a.get("strategic_analysis", {})
+    strategic_camel = convert_to_camel_case(strategic) if strategic else {
+        "Positioning": "Unknown",
+        "Target_segments": [],
+        "Key_differentiators": [],
+        "Pricing_strategy": "Unknown",
+        "Distribution_strategy": "Unknown",
+        "Marketing_strategy": "Unknown"
+    }
+    
+    # Chuyển đổi competitive_assessment sang Camel_Case
+    competitive = a.get("competitive_assessment", {})
+    competitive_camel = convert_to_camel_case(competitive) if competitive else {
+        "Strengths": [],
+        "Weaknesses": [],
+        "Market_position": "Unknown",
+        "Competitive_threat_level": "Unknown"
+    }
+    
+    # Chuyển đổi products sang Camel_Case
+    products = a.get("products", [])
+    products_camel = []
+    for p in products:
+        if isinstance(p, dict):
+            products_camel.append(convert_to_camel_case(p))
+        else:
+            products_camel.append(p)
+    
     return {
-        "bank_name": a.get("bank_name") or "Unknown Bank",
-        "bank_code": a.get("bank_code"),
-        "products": a.get("products") or [],
-        "interest_rates": a.get("interest_rates") or {},
-        "promotions": a.get("promotions") or [],
-        "digital_capabilities": a.get("digital_capabilities") or [],
-        "strategic_analysis": a.get("strategic_analysis", {
-            "positioning": "Unknown",
-            "target_segments": [],
-            "key_differentiators": [],
-            "pricing_strategy": "Unknown",
-            "distribution_strategy": "Unknown",
-            "marketing_strategy": "Unknown"
-        }),
-        "competitive_assessment": a.get("competitive_assessment", {
-            "strengths": [],
-            "weaknesses": [],
-            "market_position": "Unknown",
-            "competitive_threat_level": "Unknown"
-        }),
-        "product_gaps_vs_market": a.get("product_gaps_vs_market", []),
+        "Bank_name": a.get("bank_name") or "Unknown Bank",
+        "Bank_code": a.get("bank_code"),
+        "Products": products_camel,
+        "Interest_rates": a.get("interest_rates") or {},
+        "Promotions": a.get("promotions") or [],
+        "Digital_capabilities": a.get("digital_capabilities") or [],
+        "Strategic_analysis": strategic_camel,
+        "Competitive_assessment": competitive_camel,
+        "Product_gaps_vs_market": a.get("product_gaps_vs_market", []),
         "url": item.get("url"),
         "extraction_quality": item.get("extraction_quality", "unknown")
     }
@@ -96,11 +136,19 @@ def analyze():
             return jsonify({"status": "error", "errors": errors}), 503
 
         strategy = analyze_strategy(results)
-        if isinstance(strategy, str):
+        
+        # Chuyển đổi strategy sang Camel_Case
+        if isinstance(strategy, dict):
+            strategy = convert_to_camel_case(strategy)
+        elif isinstance(strategy, str):
             try:
                 strategy = json.loads(strategy)
+                strategy = convert_to_camel_case(strategy)
             except:
-                strategy = {"executive_summary": "Error parsing strategy", "competitive_ranking": []}
+                strategy = {
+                    "Executive_summary": "Error parsing strategy",
+                    "Competitive_ranking": []
+                }
 
         response_data = {
             "status": "success",
@@ -228,11 +276,18 @@ def analyze_upload():
     prepared = [{"analysis": {"bank_name": i["ten_ngan_hang"], "products": i["loai_san_pham"]}} for i in results]
     strategy = analyze_strategy(prepared)
     
-    if isinstance(strategy, str):
+    # Chuyển đổi strategy sang Camel_Case
+    if isinstance(strategy, dict):
+        strategy = convert_to_camel_case(strategy)
+    elif isinstance(strategy, str):
         try:
             strategy = json.loads(strategy)
+            strategy = convert_to_camel_case(strategy)
         except:
-            strategy = {"executive_summary": "Error", "competitive_ranking": []}
+            strategy = {
+                "Executive_summary": "Error",
+                "Competitive_ranking": []
+            }
             
     return jsonify(strategy)
 
