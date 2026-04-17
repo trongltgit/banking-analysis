@@ -29,78 +29,7 @@ def home():
 
 @app.route("/health")
 def health():
-    return {"status": "ok", "version": "3.4-fixed"}
-
-def convert_to_camel_case(obj):
-    """Chuyển đổi tất cả key trong dict từ snake_case sang camelCase"""
-    if isinstance(obj, dict):
-        return {convert_key(k): convert_to_camel_case(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [convert_to_camel_case(item) for item in obj]
-    else:
-        return obj
-
-def convert_key(key):
-    """Chuyển snake_case sang camelCase (viết thường chữ đầu)"""
-    if not isinstance(key, str):
-        return key
-    
-    # Giữ nguyên các key đặc biệt
-    if key in ['url', 'extraction_quality']:
-        return key
-    
-    # Chuyển đổi: bank_name -> bankName, executive_summary -> executiveSummary
-    parts = key.split('_')
-    if len(parts) == 1:
-        return parts[0].lower()
-    return parts[0].lower() + ''.join(word.capitalize() for word in parts[1:])
-
-def safe_analysis(item):
-    """Normalize data với key camelCase để match JavaScript"""
-    a = item.get("analysis", {})
-    
-    # Chuyển đổi strategic_analysis sang camelCase
-    strategic = a.get("strategic_analysis", {})
-    strategic_camel = convert_to_camel_case(strategic) if strategic else {
-        "positioning": "Unknown",
-        "targetSegments": [],
-        "keyDifferentiators": [],
-        "pricingStrategy": "Unknown",
-        "distributionStrategy": "Unknown",
-        "marketingStrategy": "Unknown"
-    }
-    
-    # Chuyển đổi competitive_assessment sang camelCase
-    competitive = a.get("competitive_assessment", {})
-    competitive_camel = convert_to_camel_case(competitive) if competitive else {
-        "strengths": [],
-        "weaknesses": [],
-        "marketPosition": "Unknown",
-        "competitiveThreatLevel": "Unknown"
-    }
-    
-    # Chuyển đổi products sang camelCase
-    products = a.get("products", [])
-    products_camel = []
-    for p in products:
-        if isinstance(p, dict):
-            products_camel.append(convert_to_camel_case(p))
-        else:
-            products_camel.append(p)
-    
-    return {
-        "bankName": a.get("bank_name") or "Unknown Bank",
-        "bankCode": a.get("bank_code"),
-        "products": products_camel,
-        "interestRates": a.get("interest_rates") or {},
-        "promotions": a.get("promotions") or [],
-        "digitalCapabilities": a.get("digital_capabilities") or [],
-        "strategicAnalysis": strategic_camel,
-        "competitiveAssessment": competitive_camel,
-        "productGapsVsMarket": a.get("product_gaps_vs_market", []),
-        "url": item.get("url"),
-        "extractionQuality": item.get("extraction_quality", "unknown")
-    }
+    return {"status": "ok", "version": "3.5-real-analysis"}
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
@@ -111,9 +40,9 @@ def analyze():
         if not urls:
             return jsonify({"status": "error", "message": "No URLs provided"}), 400
 
-        if len(urls) > 3:
-            urls = urls[:3]
-            print(f"⚠️ Limited to 3 URLs to avoid timeout")
+        if len(urls) > 4:
+            urls = urls[:4]
+            print(f"⚠️ Limited to 4 URLs to avoid timeout")
 
         cache_key = get_cache_key(urls)
         if cache_key in _cache:
@@ -124,39 +53,41 @@ def analyze():
         
         for idx, url in enumerate(urls, 1):
             try:
+                print(f"🔍 Crawling {url}...")
                 raw = crawl_website(url)
+                
+                # Kiểm tra lỗi crawl
+                if raw.startswith("ERROR_CRAWL"):
+                    raise Exception(f"Cannot crawl website: {raw}")
+                
+                print(f"📄 Extracted {len(raw)} chars from {url}")
                 time.sleep(1)
+                
                 extracted = extract_data(raw, url)
-                results.append(safe_analysis(extracted))
+                results.append(extracted)
+                
                 if idx < len(urls): 
                     time.sleep(2)
+                    
             except Exception as e:
-                print(f"Error processing {url}: {str(e)}")
+                print(f"❌ Error processing {url}: {str(e)}")
                 errors.append(f"{url}: {str(e)}")
 
         if len(errors) == len(urls) and len(urls) > 0:
-            return jsonify({"status": "error", "errors": errors}), 503
+            return jsonify({
+                "status": "error", 
+                "message": "All URLs failed to crawl",
+                "errors": errors
+            }), 503
 
+        print(f"✅ Successfully crawled {len(results)} URLs, analyzing strategy...")
         strategy = analyze_strategy(results)
         
-        # Chuyển đổi strategy sang camelCase
-        if isinstance(strategy, dict):
-            strategy = convert_to_camel_case(strategy)
-        elif isinstance(strategy, str):
-            try:
-                strategy = json.loads(strategy)
-                strategy = convert_to_camel_case(strategy)
-            except:
-                strategy = {
-                    "executiveSummary": "Error parsing strategy",
-                    "competitiveRanking": []
-                }
-
         response_data = {
             "status": "success",
             "results": results,
             "strategy": strategy,
-            "meta": {"successful": len(results), "failed": len(errors)}
+            "meta": {"successful": len(results), "failed": len(errors), "errors": errors}
         }
         
         _cache[cache_key] = response_data
@@ -166,78 +97,105 @@ def analyze():
         traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# ====================== FILE UPLOAD - KHÔNG DÙNG PANDAS ======================
+# ====================== FILE UPLOAD - HỖ TRỢ EXCEL NHIỀU CỘT ======================
 def parse_uploaded_file(file_stream, filename):
     ext = filename.lower().split('.')[-1]
     data = []
 
     try:
         if ext in ['xlsx', 'xls']:
-            # Đọc Excel bằng openpyxl (không cần pandas)
             from openpyxl import load_workbook
             wb = load_workbook(file_stream)
             ws = wb.active
             
-            # Tìm header row
-            headers = []
-            for cell in ws[1]:
-                headers.append(str(cell.value).lower().strip() if cell.value else '')
+            # Đọc tất cả rows
+            rows = list(ws.iter_rows(values_only=True))
+            if len(rows) < 2:
+                return None, "File không có dữ liệu"
             
-            # Tìm cột cần thiết
-            bank_col = None
-            prod_col = None
+            # Tìm header row (row chứa "ten_ngan_hang")
+            header_row_idx = None
+            for i, row in enumerate(rows):
+                if row and len(row) > 0 and row[0] and 'ten_ngan_hang' in str(row[0]).lower():
+                    header_row_idx = i
+                    break
             
-            for idx, h in enumerate(headers):
-                if h in ['ten_ngan_hang', 'ngan_hang', 'bank_name', 'bank', 'tên ngân hàng']:
-                    bank_col = idx
-                if h in ['loai_san_pham', 'san_pham', 'products', 'loại sản phẩm']:
-                    prod_col = idx
+            if header_row_idx is None:
+                # Thử tìm row đầu tiên có dữ liệu
+                for i, row in enumerate(rows):
+                    if row and len(row) > 0 and row[0] and str(row[0]).strip():
+                        header_row_idx = i
+                        break
             
-            if bank_col is None:
-                return None, "Không tìm thấy cột tên ngân hàng (ten_ngan_hang/bank_name)"
+            if header_row_idx is None:
+                return None, "Không tìm thấy header trong file Excel"
             
-            # Đọc data
-            for row in ws.iter_rows(min_row=2, values_only=True):
+            headers = [str(h).lower().strip() if h else '' for h in rows[header_row_idx]]
+            print(f"📊 Headers found: {headers}")
+            
+            # Tìm cột tên ngân hàng (cột đầu tiên)
+            bank_col = 0
+            
+            # Các cột còn lại là loại sản phẩm
+            product_cols = []
+            for i, h in enumerate(headers[1:], 1):
+                if h and h != 'loai_san_pham':
+                    product_cols.append((i, h))
+            
+            print(f"🏦 Bank col: {bank_col}, Product cols: {[h for _, h in product_cols]}")
+            
+            # Đọc data từ các row sau header
+            for row in rows[header_row_idx + 1:]:
                 if len(row) > bank_col and row[bank_col]:
-                    bank = str(row[bank_col]).strip()
-                    prods = []
-                    if prod_col is not None and len(row) > prod_col and row[prod_col]:
-                        prod_val = row[prod_col]
-                        if isinstance(prod_val, str):
-                            prods = [x.strip() for x in prod_val.split(',') if x.strip()]
-                        else:
-                            prods = [str(prod_val)]
-                    data.append({"ten_ngan_hang": bank, "loai_san_pham": prods})
+                    bank_name = str(row[bank_col]).strip()
+                    if not bank_name or bank_name.lower() == 'ten_ngan_hang':
+                        continue
+                    
+                    # Thu thập tất cả sản phẩm từ các cột
+                    all_products = []
+                    for col_idx, col_name in product_cols:
+                        if len(row) > col_idx and row[col_idx]:
+                            prod_text = str(row[col_idx]).strip()
+                            if prod_text:
+                                # Tách các sản phẩm bằng dấu phẩy hoặc dấu chấm
+                                products = [p.strip() for p in re.split(r'[,.;]', prod_text) if p.strip()]
+                                all_products.extend(products)
+                    
+                    if all_products:
+                        data.append({
+                            "ten_ngan_hang": bank_name,
+                            "loai_san_pham": all_products
+                        })
+                        print(f"✅ {bank_name}: {len(all_products)} products")
                     
         elif ext == 'csv':
-            # Đọc CSV thuần
             content = file_stream.read().decode('utf-8')
             reader = csv.DictReader(io.StringIO(content))
             
             for row in reader:
-                # Tìm cột tên ngân hàng
                 bank = None
-                for key in ['ten_ngan_hang', 'ngan_hang', 'bank_name', 'bank', 'tên ngân hàng']:
+                prods = []
+                
+                # Tìm cột tên ngân hàng
+                for key in ['ten_ngan_hang', 'ngan_hang', 'bank_name', 'bank']:
                     if key in row and row[key]:
                         bank = row[key].strip()
                         break
                 
-                # Tìm cột sản phẩm
-                prods = []
-                for key in ['loai_san_pham', 'san_pham', 'products', 'loại sản phẩm']:
-                    if key in row and row[key]:
-                        prod_val = row[key]
-                        prods = [x.strip() for x in str(prod_val).split(',') if x.strip()]
-                        break
+                # Tìm tất cả cột sản phẩm
+                for key, val in row.items():
+                    if key not in ['ten_ngan_hang', 'ngan_hang', 'bank_name', 'bank'] and val:
+                        products = [p.strip() for p in re.split(r'[,.;]', str(val)) if p.strip()]
+                        prods.extend(products)
                 
-                if bank:
+                if bank and prods:
                     data.append({"ten_ngan_hang": bank, "loai_san_pham": prods})
                     
         elif ext == 'pdf':
             reader = PyPDF2.PdfReader(file_stream)
             text = "".join([page.extract_text() or "" for page in reader.pages])
-            prompt = f"""Trích xuất danh sách ngân hàng từ văn bản sau. 
-            Trả về JSON array: [{{'ten_ngan_hang': '...', 'loai_san_pham': []}}]. 
+            prompt = f"""Trích xuất danh sách ngân hàng và sản phẩm từ văn bản sau. 
+            Trả về JSON array: [{{'ten_ngan_hang': '...', 'loai_san_pham': ['sp1', 'sp2']}}]. 
             Văn bản: {text[:8000]}"""
             raw = call_groq_api(prompt)
             try:
@@ -255,6 +213,8 @@ def parse_uploaded_file(file_stream, filename):
         return data, None
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return None, f"Lỗi parse file: {str(e)}"
 
 @app.route('/api/analyze-upload', methods=['POST'])
@@ -272,7 +232,7 @@ def analyze_upload():
     file_stream = io.BytesIO(file.read())
     results, err = parse_uploaded_file(file_stream, file.filename)
     
-    print(f"✅ Kết quả parse: {len(results) if results else 0} dòng")
+    print(f"✅ Kết quả parse: {len(results) if results else 0} ngân hàng")
     if err:
         print(f"❌ Lỗi: {err}")
         return jsonify({"error": err}), 400
@@ -280,23 +240,28 @@ def analyze_upload():
     if not results:
         return jsonify({"error": "Không parse được dữ liệu"}), 400
     
-    prepared = [{"analysis": {"bank_name": i["ten_ngan_hang"], "products": i["loai_san_pham"]}} for i in results]
-    strategy = analyze_strategy(prepared)
-    
-    # Chuyển đổi strategy sang camelCase
-    if isinstance(strategy, dict):
-        strategy = convert_to_camel_case(strategy)
-    elif isinstance(strategy, str):
-        try:
-            strategy = json.loads(strategy)
-            strategy = convert_to_camel_case(strategy)
-        except:
-            strategy = {
-                "executiveSummary": "Error",
-                "competitiveRanking": []
+    # Chuẩn bị data cho AI phân tích
+    prepared = []
+    for item in results:
+        prepared.append({
+            "analysis": {
+                "bank_name": item["ten_ngan_hang"],
+                "products": [{"name": p, "category": "UNKNOWN"} for p in item["loai_san_pham"]],
+                "promotions": [],
+                "digital_capabilities": [],
+                "strategic_analysis": {},
+                "competitive_assessment": {}
             }
+        })
+    
+    print(f"🤖 Calling AI strategy analysis for {len(prepared)} banks...")
+    strategy = analyze_strategy(prepared)
             
-    return jsonify(strategy)
+    return jsonify({
+        "status": "success",
+        "results": results,
+        "strategy": strategy
+    })
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
