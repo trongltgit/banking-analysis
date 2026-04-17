@@ -29,10 +29,10 @@ def home():
 
 @app.route("/health")
 def health():
-    return {"status": "ok", "version": "3.3-camel-case"}
+    return {"status": "ok", "version": "3.4-fixed"}
 
 def convert_to_camel_case(obj):
-    """Chuyển đổi tất cả key trong dict từ snake_case sang Camel_Case"""
+    """Chuyển đổi tất cả key trong dict từ snake_case sang camelCase"""
     if isinstance(obj, dict):
         return {convert_key(k): convert_to_camel_case(v) for k, v in obj.items()}
     elif isinstance(obj, list):
@@ -41,7 +41,7 @@ def convert_to_camel_case(obj):
         return obj
 
 def convert_key(key):
-    """Chuyển snake_case sang Camel_Case (viết hoa chữ cái đầu mỗi từ)"""
+    """Chuyển snake_case sang camelCase (viết thường chữ đầu)"""
     if not isinstance(key, str):
         return key
     
@@ -49,35 +49,37 @@ def convert_key(key):
     if key in ['url', 'extraction_quality']:
         return key
     
-    # Chuyển đổi: bank_name -> Bank_name, executive_summary -> Executive_summary
+    # Chuyển đổi: bank_name -> bankName, executive_summary -> executiveSummary
     parts = key.split('_')
-    return '_'.join([p.capitalize() for p in parts])
+    if len(parts) == 1:
+        return parts[0].lower()
+    return parts[0].lower() + ''.join(word.capitalize() for word in parts[1:])
 
 def safe_analysis(item):
-    """Normalize data với key chữ hoa để match JavaScript"""
+    """Normalize data với key camelCase để match JavaScript"""
     a = item.get("analysis", {})
     
-    # Chuyển đổi strategic_analysis sang Camel_Case
+    # Chuyển đổi strategic_analysis sang camelCase
     strategic = a.get("strategic_analysis", {})
     strategic_camel = convert_to_camel_case(strategic) if strategic else {
-        "Positioning": "Unknown",
-        "Target_segments": [],
-        "Key_differentiators": [],
-        "Pricing_strategy": "Unknown",
-        "Distribution_strategy": "Unknown",
-        "Marketing_strategy": "Unknown"
+        "positioning": "Unknown",
+        "targetSegments": [],
+        "keyDifferentiators": [],
+        "pricingStrategy": "Unknown",
+        "distributionStrategy": "Unknown",
+        "marketingStrategy": "Unknown"
     }
     
-    # Chuyển đổi competitive_assessment sang Camel_Case
+    # Chuyển đổi competitive_assessment sang camelCase
     competitive = a.get("competitive_assessment", {})
     competitive_camel = convert_to_camel_case(competitive) if competitive else {
-        "Strengths": [],
-        "Weaknesses": [],
-        "Market_position": "Unknown",
-        "Competitive_threat_level": "Unknown"
+        "strengths": [],
+        "weaknesses": [],
+        "marketPosition": "Unknown",
+        "competitiveThreatLevel": "Unknown"
     }
     
-    # Chuyển đổi products sang Camel_Case
+    # Chuyển đổi products sang camelCase
     products = a.get("products", [])
     products_camel = []
     for p in products:
@@ -87,21 +89,21 @@ def safe_analysis(item):
             products_camel.append(p)
     
     return {
-        "Bank_name": a.get("bank_name") or "Unknown Bank",
-        "Bank_code": a.get("bank_code"),
-        "Products": products_camel,
-        "Interest_rates": a.get("interest_rates") or {},
-        "Promotions": a.get("promotions") or [],
-        "Digital_capabilities": a.get("digital_capabilities") or [],
-        "Strategic_analysis": strategic_camel,
-        "Competitive_assessment": competitive_camel,
-        "Product_gaps_vs_market": a.get("product_gaps_vs_market", []),
+        "bankName": a.get("bank_name") or "Unknown Bank",
+        "bankCode": a.get("bank_code"),
+        "products": products_camel,
+        "interestRates": a.get("interest_rates") or {},
+        "promotions": a.get("promotions") or [],
+        "digitalCapabilities": a.get("digital_capabilities") or [],
+        "strategicAnalysis": strategic_camel,
+        "competitiveAssessment": competitive_camel,
+        "productGapsVsMarket": a.get("product_gaps_vs_market", []),
         "url": item.get("url"),
-        "extraction_quality": item.get("extraction_quality", "unknown")
+        "extractionQuality": item.get("extraction_quality", "unknown")
     }
 
-@app.route("/Analyze", methods=["POST"])
-def Analyze():
+@app.route("/analyze", methods=["POST"])
+def analyze():
     try:
         data = request.get_json(force=True)
         urls = data.get("urls", [])
@@ -137,7 +139,7 @@ def Analyze():
 
         strategy = analyze_strategy(results)
         
-        # Chuyển đổi strategy sang Camel_Case
+        # Chuyển đổi strategy sang camelCase
         if isinstance(strategy, dict):
             strategy = convert_to_camel_case(strategy)
         elif isinstance(strategy, str):
@@ -146,8 +148,8 @@ def Analyze():
                 strategy = convert_to_camel_case(strategy)
             except:
                 strategy = {
-                    "Executive_summary": "Error parsing strategy",
-                    "Competitive_ranking": []
+                    "executiveSummary": "Error parsing strategy",
+                    "competitiveRanking": []
                 }
 
         response_data = {
@@ -264,10 +266,15 @@ def analyze_upload():
     if file.filename == '':
         return jsonify({"error": "File rỗng"}), 400
         
+    print(f"📁 Nhận file: {file.filename}")
+    print(f"📊 Content-Type: {file.content_type}")
+        
     file_stream = io.BytesIO(file.read())
     results, err = parse_uploaded_file(file_stream, file.filename)
     
-    if err: 
+    print(f"✅ Kết quả parse: {len(results) if results else 0} dòng")
+    if err:
+        print(f"❌ Lỗi: {err}")
         return jsonify({"error": err}), 400
     
     if not results:
@@ -276,7 +283,7 @@ def analyze_upload():
     prepared = [{"analysis": {"bank_name": i["ten_ngan_hang"], "products": i["loai_san_pham"]}} for i in results]
     strategy = analyze_strategy(prepared)
     
-    # Chuyển đổi strategy sang Camel_Case
+    # Chuyển đổi strategy sang camelCase
     if isinstance(strategy, dict):
         strategy = convert_to_camel_case(strategy)
     elif isinstance(strategy, str):
@@ -285,8 +292,8 @@ def analyze_upload():
             strategy = convert_to_camel_case(strategy)
         except:
             strategy = {
-                "Executive_summary": "Error",
-                "Competitive_ranking": []
+                "executiveSummary": "Error",
+                "competitiveRanking": []
             }
             
     return jsonify(strategy)
