@@ -5,6 +5,7 @@ import time
 import hashlib
 import csv
 import io
+import re
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 
@@ -29,7 +30,7 @@ def home():
 
 @app.route("/health")
 def health():
-    return {"status": "ok", "version": "3.5-real-analysis"}
+    return {"status": "ok", "version": "3.6-excel-fix"}
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
@@ -56,7 +57,6 @@ def analyze():
                 print(f"🔍 Crawling {url}...")
                 raw = crawl_website(url)
                 
-                # Kiểm tra lỗi crawl
                 if raw.startswith("ERROR_CRAWL"):
                     raise Exception(f"Cannot crawl website: {raw}")
                 
@@ -97,7 +97,7 @@ def analyze():
         traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# ====================== FILE UPLOAD - HỖ TRỢ EXCEL NHIỀU CỘT ======================
+# ====================== FILE UPLOAD - FIX EXCEL NHIỀU CỘT ======================
 def parse_uploaded_file(file_stream, filename):
     ext = filename.lower().split('.')[-1]
     data = []
@@ -110,63 +110,96 @@ def parse_uploaded_file(file_stream, filename):
             
             # Đọc tất cả rows
             rows = list(ws.iter_rows(values_only=True))
-            if len(rows) < 2:
-                return None, "File không có dữ liệu"
+            print(f"📊 Tổng số rows: {len(rows)}")
             
-            # Tìm header row (row chứa "ten_ngan_hang")
+            if len(rows) < 3:
+                return None, "File không đủ dữ liệu (cần ít nhất 3 dòng: header + tên cột + data)"
+            
+            # Tìm row chứa "ten_ngan_hang" chính xác
             header_row_idx = None
             for i, row in enumerate(rows):
-                if row and len(row) > 0 and row[0] and 'ten_ngan_hang' in str(row[0]).lower():
-                    header_row_idx = i
-                    break
-            
-            if header_row_idx is None:
-                # Thử tìm row đầu tiên có dữ liệu
-                for i, row in enumerate(rows):
-                    if row and len(row) > 0 and row[0] and str(row[0]).strip():
+                if row and len(row) > 0 and row[0]:
+                    first_cell = str(row[0]).strip().lower()
+                    if first_cell == 'ten_ngan_hang':
                         header_row_idx = i
+                        print(f"✅ Tìm thấy header tại dòng {i+1}")
                         break
             
             if header_row_idx is None:
-                return None, "Không tìm thấy header trong file Excel"
+                # Thử tìm bất kỳ dòng nào có chữ "ngân hàng" hoặc tương tự
+                for i, row in enumerate(rows):
+                    if row and len(row) > 0 and row[0]:
+                        cell_val = str(row[0]).strip().lower()
+                        if 'ngân hàng' in cell_val or 'ngan_hang' in cell_val or 'bank' in cell_val:
+                            header_row_idx = i
+                            print(f"✅ Tìm thấy header (fallback) tại dòng {i+1}: {cell_val}")
+                            break
             
-            headers = [str(h).lower().strip() if h else '' for h in rows[header_row_idx]]
-            print(f"📊 Headers found: {headers}")
+            if header_row_idx is None:
+                return None, f"Không tìm thấy cột 'ten_ngan_hang' trong file. Các giá trị đầu tiên: {[str(r[0]) if r else 'EMPTY' for r in rows[:5]]}"
             
-            # Tìm cột tên ngân hàng (cột đầu tiên)
-            bank_col = 0
+            # Lấy headers từ dòng tìm được
+            headers = [str(h).strip() if h else '' for h in rows[header_row_idx]]
+            print(f"📋 Headers: {headers}")
             
-            # Các cột còn lại là loại sản phẩm
-            product_cols = []
-            for i, h in enumerate(headers[1:], 1):
-                if h and h != 'loai_san_pham':
-                    product_cols.append((i, h))
-            
-            print(f"🏦 Bank col: {bank_col}, Product cols: {[h for _, h in product_cols]}")
-            
-            # Đọc data từ các row sau header
-            for row in rows[header_row_idx + 1:]:
-                if len(row) > bank_col and row[bank_col]:
-                    bank_name = str(row[bank_col]).strip()
-                    if not bank_name or bank_name.lower() == 'ten_ngan_hang':
-                        continue
+            # Tìm dòng tiếp theo chứa tên loại sản phẩm (dòng "Tiền gửi tiết kiệm", "Cho vay cá nhân"...)
+            # Đây là dòng mô tả các cột, bỏ qua
+            product_headers_row = None
+            for i in range(header_row_idx + 1, min(header_row_idx + 3, len(rows))):
+                row = rows[i]
+                if row and len(row) > 1 and row[1]:
+                    # Kiểm tra nếu dòng này chứa tên sản phẩm (không phải tên ngân hàng)
+                    first_val = str(row[0]).strip() if row[0] else ''
+                    second_val = str(row[1]).strip() if row[1] else ''
                     
-                    # Thu thập tất cả sản phẩm từ các cột
-                    all_products = []
-                    for col_idx, col_name in product_cols:
-                        if len(row) > col_idx and row[col_idx]:
-                            prod_text = str(row[col_idx]).strip()
-                            if prod_text:
-                                # Tách các sản phẩm bằng dấu phẩy hoặc dấu chấm
-                                products = [p.strip() for p in re.split(r'[,.;]', prod_text) if p.strip()]
-                                all_products.extend(products)
-                    
-                    if all_products:
-                        data.append({
-                            "ten_ngan_hang": bank_name,
-                            "loai_san_pham": all_products
-                        })
-                        print(f"✅ {bank_name}: {len(all_products)} products")
+                    # Nếu cột 1 rỗng và cột 2 có giá trị -> đây là dòng tên loại SP
+                    if (not first_val or first_val == '') and second_val:
+                        product_headers_row = i
+                        print(f"📦 Dòng tên loại SP tại dòng {i+1}: {row[1:]}")
+                        break
+            
+            # Xác định cột bắt đầu từ đâu
+            # Cột 0: ten_ngan_hang
+            # Cột 1-n: các loại sản phẩm (có thể có dòng mô tả riêng)
+            
+            # Tìm data rows (bắt đầu sau header và sau dòng mô tả nếu có)
+            data_start_row = header_row_idx + 1
+            if product_headers_row:
+                data_start_row = product_headers_row + 1
+            
+            print(f"🎯 Data bắt đầu từ dòng {data_start_row + 1}")
+            
+            # Đọc data
+            for i in range(data_start_row, len(rows)):
+                row = rows[i]
+                if not row or len(row) == 0:
+                    continue
+                
+                # Cột đầu tiên phải là tên ngân hàng
+                bank_name = str(row[0]).strip() if row[0] else ''
+                
+                # Bỏ qua nếu rỗng hoặc là header
+                if not bank_name or bank_name.lower() == 'ten_ngan_hang':
+                    continue
+                
+                # Thu thập tất cả sản phẩm từ các cột còn lại
+                all_products = []
+                for col_idx in range(1, len(row)):
+                    if row[col_idx]:
+                        prod_text = str(row[col_idx]).strip()
+                        if prod_text and prod_text.lower() != 'loai_san_pham':
+                            # Tách các sản phẩm bằng dấu phẩy hoặc dấu chấm phẩy
+                            products = [p.strip() for p in re.split(r'[;]', prod_text) if p.strip()]
+                            all_products.extend(products)
+                
+                if all_products:
+                    data.append({
+                        "ten_ngan_hang": bank_name,
+                        "loai_san_pham": all_products
+                    })
+                    print(f"✅ {bank_name}: {len(all_products)} sản phẩm")
+                else:
+                    print(f"⚠️ {bank_name}: Không có sản phẩm")
                     
         elif ext == 'csv':
             content = file_stream.read().decode('utf-8')
@@ -185,7 +218,7 @@ def parse_uploaded_file(file_stream, filename):
                 # Tìm tất cả cột sản phẩm
                 for key, val in row.items():
                     if key not in ['ten_ngan_hang', 'ngan_hang', 'bank_name', 'bank'] and val:
-                        products = [p.strip() for p in re.split(r'[,.;]', str(val)) if p.strip()]
+                        products = [p.strip() for p in re.split(r'[;]', str(val)) if p.strip()]
                         prods.extend(products)
                 
                 if bank and prods:
@@ -208,7 +241,7 @@ def parse_uploaded_file(file_stream, filename):
             return None, "Định dạng file không hỗ trợ (chỉ hỗ trợ .xlsx, .csv, .pdf)"
 
         if not data:
-            return None, "Không tìm thấy dữ liệu trong file"
+            return None, "Không tìm thấy dữ liệu trong file sau khi parse"
             
         return data, None
         
