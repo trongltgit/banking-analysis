@@ -19,7 +19,7 @@ def call_groq_api(prompt, model="llama-3.3-70b-versatile", max_tokens=2000, retr
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": "Bạn là chuyên gia phân tích ngân hàng Việt Nam. Trả về JSON hợp lệ, ngắn gọn, không giải thích thêm."},
+            {"role": "system", "content": "Bạn là chuyên gia phân tích ngân hàng Việt Nam. Trả về JSON hợp lệ, không giải thích thêm."},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.1,
@@ -33,7 +33,6 @@ def call_groq_api(prompt, model="llama-3.3-70b-versatile", max_tokens=2000, retr
             
             if res.status_code == 400:
                 print(f"❌ 400 Bad Request: {res.text[:400]}")
-                # Nếu vẫn lỗi model, fallback sang model nhỏ hơn
                 if "decommissioned" in res.text or "not supported" in res.text:
                     print("🔄 Fallback to llama-3.1-8b-instant")
                     payload["model"] = "llama-3.1-8b-instant"
@@ -59,50 +58,106 @@ def call_groq_api(prompt, model="llama-3.3-70b-versatile", max_tokens=2000, retr
 
 
 def extract_data(text, url):
-    domain = url.split("//")[-1].split("/")[0].replace("www.", "").replace(".vn", "").replace(".com", "").upper()
+    """Phân tích dữ liệu từ content crawl được"""
     
-    content = text[:4000]   # Rút mạnh hơn để tránh lỗi
+    # Xác định ngân hàng từ URL
+    domain = url.split("//")[-1].split("/")[0].replace("www.", "").replace(".vn", "").replace(".com", "")
+    
+    bank_mapping = {
+        'techcombank': {'name': 'Techcombank', 'code': 'TCB'},
+        'bidv': {'name': 'BIDV', 'code': 'BIDV'},
+        'vietinbank': {'name': 'VietinBank', 'code': 'CTG'},
+        'vietcombank': {'name': 'Vietcombank', 'code': 'VCB'},
+        'agribank': {'name': 'Agribank', 'code': 'AGR'},
+        'acb': {'name': 'ACB', 'code': 'ACB'},
+        'sacombank': {'name': 'Sacombank', 'code': 'STB'},
+        'vpbank': {'name': 'VPBank', 'code': 'VPB'},
+        'mbbank': {'name': 'MB Bank', 'code': 'MBB'},
+        'tpbank': {'name': 'TPBank', 'code': 'TPB'},
+    }
+    
+    bank_info = bank_mapping.get(domain.lower(), {'name': domain.upper(), 'code': 'UNKNOWN'})
+    
+    # Kiểm tra nếu crawl lỗi
+    if text.startswith("ERROR_CRAWL") or len(text) < 100:
+        return {
+            "url": url,
+            "analysis": {
+                "bank_name": bank_info['name'],
+                "bank_code": bank_info['code'],
+                "products": [],
+                "interest_rates": {},
+                "promotions": [],
+                "digital_capabilities": [],
+                "strategic_analysis": {
+                    "positioning": "Không thể truy cập website",
+                    "target_segments": [],
+                    "key_differentiators": [],
+                    "pricing_strategy": "Unknown",
+                    "distribution_strategy": "Unknown",
+                    "marketing_strategy": "Unknown"
+                },
+                "competitive_assessment": {
+                    "strengths": [],
+                    "weaknesses": ["Website không khả dụng hoặc chặn bot"],
+                    "market_position": "Unknown",
+                    "competitive_threat_level": "Unknown"
+                }
+            },
+            "extraction_quality": "error"
+        }
 
-    prompt = f"""Phân tích website ngân hàng {domain}.
+    # Cắt content để không quá dài
+    content = text[:6000]
+
+    prompt = f"""Phân tích website ngân hàng {bank_info['name']} ({bank_info['code']}).
 URL: {url}
-CONTENT: {content}
 
-Trả về đúng JSON sau, không thêm bất kỳ chữ nào khác:
+NỘI DUNG TRANG WEB:
+{content}
+
+Dựa trên nội dung thực tế từ website trên, trả về JSON chính xác:
 
 {{
-  "bank_name": "Tên ngân hàng",
-  "bank_code": "TCB/BIDV/VTB/...",
+  "bank_name": "{bank_info['name']}",
+  "bank_code": "{bank_info['code']}",
   "products": [
-    {{"category": "TIETKIEM", "name": "Tên SP", "features": ["đặc điểm"]}}
+    {{"category": "SAVINGS", "name": "Tên sản phẩm cụ thể", "features": ["đặc điểm 1", "đặc điểm 2"]}}
   ],
-  "interest_rates": {{"savings": "5.5%"}},
-  "promotions": [],
-  "digital_capabilities": ["App", "Internet Banking"],
+  "interest_rates": {{"savings": "5.5%", "loan": "7.2%"}},
+  "promotions": [
+    {{"name": "Tên khuyến mãi", "benefit": "Lợi ích", "target_segment": "Đối tượng"}}
+  ],
+  "digital_capabilities": ["App mobile", "Internet banking", "Smart OTP"],
   "strategic_analysis": {{
-    "positioning": "...",
-    "target_segments": ["..."],
-    "key_differentiators": ["..."],
-    "pricing_strategy": "...",
-    "distribution_strategy": "...",
-    "marketing_strategy": "..."
+    "positioning": "Định vị thị trường dựa trên nội dung web",
+    "target_segments": ["Phân khúc KH 1", "Phân khúc KH 2"],
+    "key_differentiators": ["Điểm khác biệt 1", "Điểm khác biệt 2"],
+    "pricing_strategy": "Chiến lược giá",
+    "distribution_strategy": "Chiến lược phân phối",
+    "marketing_strategy": "Chiến lược marketing"
   }},
   "competitive_assessment": {{
-    "strengths": ["..."],
-    "weaknesses": ["..."],
-    "market_position": "Leader/Challenger/Follower",
+    "strengths": ["Điểm mạnh 1", "Điểm mạnh 2"],
+    "weaknesses": ["Điểm yếu 1"],
+    "market_position": "Leader/Challenger/Follower/Niche",
     "competitive_threat_level": "High/Medium/Low"
   }}
 }}
 
-Chỉ trả JSON thuần."""
+QUAN TRỌNG: 
+- Chỉ trả về JSON thuần, không thêm text khác
+- Phân tích dựa trên NỘI DUNG THỰC TẾ từ website, không bịa đặt
+- Nếu không tìm thấy thông tin, để giá trị rỗng [] hoặc "Unknown"
+- Sản phẩm phải có tên cụ thể, không chung chung"""
 
     try:
-        # Dùng model mạnh trước
+        print(f"🤖 Calling AI for {bank_info['name']}...")
         ai_content = call_groq_api(prompt, model="llama-3.3-70b-versatile", max_tokens=1800)
         parsed = clean_json(ai_content)
         
         if not parsed:
-            # Fallback model nhỏ, nhanh, rẻ
+            # Thử lại với model nhỏ hơn
             ai_content = call_groq_api(prompt, model="llama-3.1-8b-instant", max_tokens=1500)
             parsed = clean_json(ai_content)
 
@@ -110,15 +165,49 @@ Chỉ trả JSON thuần."""
             raise Exception("Cannot parse JSON from AI")
 
     except Exception as e:
-        raise Exception(f"AI extraction failed: {str(e)}")
+        print(f"❌ AI extraction failed for {bank_info['name']}: {str(e)}")
+        # Trả về dữ liệu cơ bản nếu AI lỗi
+        return {
+            "url": url,
+            "analysis": {
+                "bank_name": bank_info['name'],
+                "bank_code": bank_info['code'],
+                "products": [],
+                "interest_rates": {},
+                "promotions": [],
+                "digital_capabilities": [],
+                "strategic_analysis": {
+                    "positioning": f"{bank_info['name']} - Ngân hàng tại Việt Nam",
+                    "target_segments": [],
+                    "key_differentiators": [],
+                    "pricing_strategy": "Unknown",
+                    "distribution_strategy": "Unknown",
+                    "marketing_strategy": "Unknown"
+                },
+                "competitive_assessment": {
+                    "strengths": [],
+                    "weaknesses": [f"Không thể phân tích chi tiết: {str(e)}"],
+                    "market_position": "Unknown",
+                    "competitive_threat_level": "Unknown"
+                }
+            },
+            "extraction_quality": "error"
+        }
 
-    # Normalize
+    # Normalize và đánh giá chất lượng
     analysis = parsed
+    
+    # Đảm bảo các trường tồn tại
     analysis.setdefault("products", [])
     analysis.setdefault("promotions", [])
     analysis.setdefault("digital_capabilities", [])
-
-    quality = "good" if len(analysis.get("products", [])) >= 5 else "limited"
+    analysis.setdefault("interest_rates", {})
+    analysis.setdefault("strategic_analysis", {})
+    analysis.setdefault("competitive_assessment", {})
+    
+    # Đánh giá chất lượng
+    quality = "deep" if len(analysis.get("products", [])) >= 5 else \
+              "good" if len(analysis.get("products", [])) >= 2 else "limited"
 
     return {
         "url": url,
@@ -128,18 +217,38 @@ Chỉ trả JSON thuần."""
 
 
 def clean_json(text):
+    """Làm sạch và parse JSON từ AI response"""
     if not text:
         return None
+    
+    # Thử parse trực tiếp
     try:
-        return json.loads(text)
+        return json.loads(text.strip())
     except:
-        patterns = [r'```json\s*(.*?)\s*```', r'```\s*(.*?)\s*```', r'(\{.*\})']
-        for pattern in patterns:
-            matches = re.findall(pattern, text, re.DOTALL)
-            for m in matches:
-                try:
-                    cleaned = m.strip() if isinstance(m, str) else m[0].strip()
-                    return json.loads(cleaned)
-                except:
-                    continue
+        pass
+    
+    # Tìm JSON trong markdown code block
+    patterns = [
+        r'```json\s*(.*?)\s*```',
+        r'```\s*(.*?)\s*```',
+        r'\{[\s\S]*"bank_name"[\s\S]*\}'  # Tìm object có bank_name
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.DOTALL)
+        for m in matches:
+            try:
+                cleaned = m.strip() if isinstance(m, str) else m[0].strip()
+                return json.loads(cleaned)
+            except:
+                continue
+    
+    # Thử tìm bất kỳ JSON object nào
+    try:
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            return json.loads(match.group())
+    except:
+        pass
+    
     return None
