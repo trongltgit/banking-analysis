@@ -4,73 +4,102 @@ import re
 import requests
 import time
 
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
+# Luân phiên model khi bị rate limit
+GROQ_MODELS = [
+    "llama-3.3-70b-versatile",   # Mạnh nhất, dùng trước
+    "llama-3.1-8b-instant",      # Nhanh, ít bị limit
+    "gemma2-9b-it",              # Backup 1
+    "mixtral-8x7b-32768",        # Backup 2
+]
 
 
-def call_ai_api(prompt, max_tokens=2000, retries=3):
-    """Gọi Anthropic Claude API"""
+def call_ai_api(prompt, max_tokens=2000, retries=4):
+    """Gọi Groq API với smart retry + model rotation"""
+    api_key = os.environ.get("GROQ_API_KEY_BK")
+    if not api_key:
+        raise Exception("GROQ_API_KEY_BK chưa được set trong environment variables")
+
     headers = {
-        "Content-Type": "application/json",
-        "anthropic-version": "2023-06-01"
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
     }
 
-    payload = {
-        "model": "claude-sonnet-4-20250514",
-        "max_tokens": max_tokens,
-        "system": (
-            "Bạn là chuyên gia phân tích ngân hàng Việt Nam với 15 năm kinh nghiệm. "
-            "Luôn trả về JSON hợp lệ, không có text nào bên ngoài JSON. "
-            "Tất cả keys dùng snake_case (ví dụ: bank_name, không phải Bank_Name)."
-        ),
-        "messages": [
-            {"role": "user", "content": prompt}
-        ]
-    }
+    last_error = None
 
     for attempt in range(retries):
-        try:
-            res = requests.post(ANTHROPIC_API_URL, headers=headers, json=payload, timeout=90)
+        model = GROQ_MODELS[attempt % len(GROQ_MODELS)]
 
-            if res.status_code == 529 or res.status_code == 429:
-                wait = 10 * (attempt + 1)
-                print(f"⏳ API overloaded, waiting {wait}s...")
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "Bạn là chuyên gia phân tích ngân hàng Việt Nam. "
+                        "Luôn trả về JSON hợp lệ, không có text nào bên ngoài JSON. "
+                        "Tất cả keys dùng snake_case (bank_name, executive_summary...)."
+                    )
+                },
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.2,
+            "max_tokens": max_tokens
+        }
+
+        try:
+            print(f"🤖 Groq [{model}] attempt {attempt + 1}/{retries}...")
+            res = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=60)
+
+            if res.status_code == 429:
+                # Đọc Retry-After header nếu có
+                retry_after = int(res.headers.get("Retry-After", 0))
+                wait = max(retry_after, 8 * (attempt + 1))
+                print(f"⏳ Rate limited [{model}], waiting {wait}s then trying next model...")
                 time.sleep(wait)
+                last_error = f"Rate limit on {model}"
+                continue
+
+            if res.status_code == 404:
+                print(f"⚠️ Model {model} not available, switching...")
+                last_error = f"Model {model} not found"
                 continue
 
             res.raise_for_status()
-            data = res.json()
 
-            # Lấy text từ response
-            content_blocks = data.get("content", [])
-            text = " ".join(
-                block.get("text", "") for block in content_blocks if block.get("type") == "text"
-            ).strip()
+            content = res.json()["choices"][0]["message"]["content"].strip()
 
-            return text
+            # Strip markdown code fences nếu có
+            content = re.sub(r'^```json\s*', '', content, flags=re.MULTILINE)
+            content = re.sub(r'^```\s*', '', content, flags=re.MULTILINE)
+            content = re.sub(r'\s*```$', '', content, flags=re.MULTILINE)
+
+            print(f"✅ Groq OK [{model}] ({len(content)} chars)")
+            return content.strip()
 
         except requests.exceptions.Timeout:
-            print(f"⚠️ Timeout attempt {attempt + 1}")
-            if attempt < retries - 1:
-                time.sleep(5)
+            wait = 5 * (attempt + 1)
+            print(f"⏱️ Timeout [{model}], waiting {wait}s...")
+            time.sleep(wait)
+            last_error = f"Timeout on {model}"
+
         except Exception as e:
-            print(f"⚠️ API error attempt {attempt + 1}: {str(e)}")
-            if attempt < retries - 1:
-                time.sleep(5)
-            else:
-                raise
+            wait = 5 * (attempt + 1)
+            print(f"❌ Error [{model}]: {str(e)}, waiting {wait}s...")
+            time.sleep(wait)
+            last_error = str(e)
 
-    raise Exception("AI API failed after all retries")
+    raise Exception(f"Groq API failed after {retries} attempts. Last error: {last_error}")
 
 
-# Alias cho backward compatibility
+# Backward compat
 def call_groq_api(prompt, model=None, max_tokens=1500, retries=3):
-    """Backward compat wrapper"""
     return call_ai_api(prompt, max_tokens=max_tokens, retries=retries)
 
 
 def clean_json(text):
-    """Parse JSON từ response AI, xử lý nhiều format khác nhau"""
+    """Parse JSON từ response AI, xử lý nhiều format"""
     if not text:
         return None
 
@@ -80,7 +109,7 @@ def clean_json(text):
     except:
         pass
 
-    # Tìm JSON trong ```json ... ```
+    # JSON trong ```json ... ```
     match = re.search(r'```json\s*([\s\S]*?)\s*```', text, re.IGNORECASE)
     if match:
         try:
@@ -88,7 +117,7 @@ def clean_json(text):
         except:
             pass
 
-    # Tìm JSON trong ``` ... ```
+    # JSON trong ``` ... ```
     match = re.search(r'```\s*([\s\S]*?)\s*```', text)
     if match:
         try:
@@ -96,15 +125,14 @@ def clean_json(text):
         except:
             pass
 
-    # Tìm object JSON đầu tiên
+    # Tìm object JSON đầu tiên trong text
     match = re.search(r'\{[\s\S]*\}', text)
     if match:
+        raw = match.group()
         try:
-            return json.loads(match.group())
+            return json.loads(raw)
         except:
             # Thử fix JSON bị cắt bởi max_tokens
-            raw = match.group()
-            # Đếm braces để tìm điểm kết thúc
             depth = 0
             end = 0
             for i, ch in enumerate(raw):
@@ -124,8 +152,22 @@ def clean_json(text):
     return None
 
 
+def normalize_keys(obj):
+    """Chuyển tất cả keys về snake_case nhất quán"""
+    if isinstance(obj, dict):
+        new_obj = {}
+        for k, v in obj.items():
+            new_key = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', '_', k).lower()
+            new_key = new_key.replace(' ', '_').replace('-', '_')
+            new_obj[new_key] = normalize_keys(v)
+        return new_obj
+    elif isinstance(obj, list):
+        return [normalize_keys(item) for item in obj]
+    return obj
+
+
 def analyze_strategy(results):
-    """Tạo phân tích chiến lược tổng thể từ kết quả các ngân hàng"""
+    """Phân tích chiến lược tổng thể từ kết quả các ngân hàng"""
     if not results:
         return {
             "executive_summary": "Không có dữ liệu để phân tích.",
@@ -133,7 +175,6 @@ def analyze_strategy(results):
             "strategic_recommendations": {"overall_strategy": "N/A"}
         }
 
-    # Tóm tắt dữ liệu cho AI
     summary = []
     for r in results:
         a = r.get("analysis", {})
@@ -148,7 +189,6 @@ def analyze_strategy(results):
             "strengths": competitive.get("strengths", [])[:3],
             "weaknesses": competitive.get("weaknesses", [])[:2],
             "market_position": competitive.get("market_position", ""),
-            "threat_level": competitive.get("competitive_threat_level", ""),
             "interest_rates": a.get("interest_rates", {})
         })
 
@@ -158,7 +198,7 @@ def analyze_strategy(results):
 
 Trả về DUY NHẤT một JSON object (không có text nào khác) với cấu trúc:
 {{
-  "executive_summary": "Tóm tắt toàn cảnh thị trường ngân hàng Việt Nam và vị thế các ngân hàng...",
+  "executive_summary": "Tóm tắt toàn cảnh thị trường và vị thế các ngân hàng...",
   "competitive_ranking": [
     {{
       "rank": 1,
@@ -172,9 +212,9 @@ Trả về DUY NHẤT một JSON object (không có text nào khác) với cấu
   "detailed_competitor_analysis": [
     {{
       "bank": "Tên ngân hàng",
-      "product_strategy": "Chiến lược sản phẩm chi tiết",
-      "pricing_strategy": "Chiến lược giá và định vị",
-      "distribution_strategy": "Chiến lược phân phối kênh",
+      "product_strategy": "Chiến lược sản phẩm",
+      "pricing_strategy": "Chiến lược giá",
+      "distribution_strategy": "Chiến lược phân phối",
       "digital_strategy": "Chiến lược số hóa",
       "competitive_score": {{
         "product_breadth": 8,
@@ -183,88 +223,68 @@ Trả về DUY NHẤT một JSON object (không có text nào khác) với cấu
         "brand_strength": 9,
         "overall": 8
       }},
-      "key_threats": ["Mối đe dọa 1", "mối đe dọa 2"],
-      "key_opportunities": ["Cơ hội 1", "cơ hội 2"]
+      "key_threats": ["Mối đe dọa 1"],
+      "key_opportunities": ["Cơ hội 1"]
     }}
   ],
   "product_comparison_matrix": {{
-    "Tiết kiệm": {{"leader": "Tên ngân hàng dẫn đầu", "gap_analysis": "Phân tích khoảng cách"}},
+    "Tiết kiệm": {{"leader": "Tên ngân hàng", "gap_analysis": "Phân tích"}},
     "Cho vay": {{"leader": "Tên ngân hàng", "gap_analysis": "Phân tích"}},
     "Thẻ": {{"leader": "Tên ngân hàng", "gap_analysis": "Phân tích"}},
     "Ngân hàng số": {{"leader": "Tên ngân hàng", "gap_analysis": "Phân tích"}}
   }},
   "strategic_recommendations": {{
-    "overall_strategy": "Chiến lược tổng thể để cạnh tranh hiệu quả",
-    "product_strategy": "Gợi ý phát triển sản phẩm",
-    "pricing_strategy": "Chiến lược giá đề xuất",
-    "distribution_strategy": "Chiến lược kênh phân phối",
-    "digital_strategy": "Ưu tiên số hóa",
+    "overall_strategy": "Chiến lược tổng thể",
+    "product_strategy": "Chiến lược sản phẩm",
+    "pricing_strategy": "Chiến lược giá",
+    "distribution_strategy": "Chiến lược phân phối",
+    "digital_strategy": "Chiến lược số hóa",
     "implementation_roadmap": [
       {{
         "phase": "Giai đoạn 1 (Q1-Q2 2025)",
-        "actions": ["Hành động 1", "Hành động 2", "Hành động 3"],
-        "milestones": "KPI đo lường",
-        "investment_required": "Mức đầu tư ước tính"
-      }},
-      {{
-        "phase": "Giai đoạn 2 (Q3-Q4 2025)",
         "actions": ["Hành động 1", "Hành động 2"],
-        "milestones": "KPI",
-        "investment_required": "Mức đầu tư"
+        "milestones": "KPI đo lường",
+        "investment_required": "Ước tính đầu tư"
       }}
     ]
   }},
   "market_opportunities": [
     {{
-      "opportunity": "Tên cơ hội thị trường",
-      "rationale": "Lý do và bằng chứng",
-      "potential_revenue": "Tiềm năng doanh thu",
+      "opportunity": "Tên cơ hội",
+      "rationale": "Lý do",
+      "potential_revenue": "Tiềm năng",
       "difficulty": "Dễ/Trung bình/Khó",
       "priority": "Cao/Trung bình/Thấp"
     }}
   ],
-  "risk_mitigation": [
-    "Rủi ro 1 và cách giảm thiểu",
-    "Rủi ro 2 và cách giảm thiểu",
-    "Rủi ro 3 và cách giảm thiểu"
-  ]
+  "risk_mitigation": ["Rủi ro 1 và cách giảm thiểu", "Rủi ro 2"]
 }}"""
 
     try:
-        content = call_ai_api(prompt, max_tokens=3000, retries=2)
+        content = call_ai_api(prompt, max_tokens=2500, retries=3)
         strategy = clean_json(content)
 
         if not strategy:
             raise Exception("Cannot parse strategy JSON")
 
-        # Đảm bảo keys snake_case nhất quán
         return normalize_keys(strategy)
 
     except Exception as e:
         print(f"❌ Strategy analysis failed: {str(e)}")
         return {
-            "executive_summary": f"Lỗi khi phân tích chiến lược: {str(e)}. Vui lòng xem chi tiết từng ngân hàng bên trái.",
+            "executive_summary": f"Lỗi khi phân tích chiến lược: {str(e)}. Xem chi tiết từng ngân hàng bên trái.",
             "competitive_ranking": [
-                {"rank": i+1, "bank": r.get("bank", ""), "position": r.get("market_position", "N/A"),
-                 "score": "N/A", "key_strength": "", "analysis": ""}
+                {
+                    "rank": i + 1,
+                    "bank": r.get("bank", ""),
+                    "position": r.get("market_position", "N/A"),
+                    "score": "N/A",
+                    "key_strength": "",
+                    "analysis": ""
+                }
                 for i, r in enumerate(summary)
             ],
             "strategic_recommendations": {
-                "overall_strategy": "Vui lòng thử lại để nhận phân tích chiến lược đầy đủ.",
+                "overall_strategy": "Vui lòng thử lại để nhận phân tích đầy đủ."
             }
         }
-
-
-def normalize_keys(obj):
-    """Đảm bảo tất cả keys dùng snake_case nhất quán"""
-    if isinstance(obj, dict):
-        new_obj = {}
-        for k, v in obj.items():
-            # Chuyển CamelCase và Camel_Case về snake_case
-            new_key = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', '_', k).lower()
-            new_key = new_key.replace(' ', '_')
-            new_obj[new_key] = normalize_keys(v)
-        return new_obj
-    elif isinstance(obj, list):
-        return [normalize_keys(item) for item in obj]
-    return obj
