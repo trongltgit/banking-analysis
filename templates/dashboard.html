@@ -1,1329 +1,742 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Banking Deep Intelligence</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
-            color: #e2e8f0;
-            min-height: 100vh;
-        }
-
-        .header {
-            background: linear-gradient(90deg, #0d4a3a 0%, #0a7c5c 100%);
-            padding: 20px 30px;
-            box-shadow: 0 4px 30px rgba(0,0,0,0.4);
-        }
-
-        .header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
-        .header .subtitle { font-size: 14px; opacity: 0.9; margin-top: 6px; font-weight: 400; }
-
-        .main-container {
-            display: flex;
-            height: calc(100vh - 80px);
-            overflow: hidden;
-        }
-
-        .left-panel {
-            width: 45%;
-            background: rgba(15, 23, 42, 0.95);
-            padding: 24px;
-            overflow-y: auto;
-            border-right: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .input-section {
-            background: rgba(30, 41, 59, 0.8);
-            padding: 20px;
-            border-radius: 16px;
-            margin-bottom: 24px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .input-section h3 {
-            font-size: 13px;
-            text-transform: uppercase;
-            color: #64748b;
-            margin-bottom: 12px;
-            letter-spacing: 0.5px;
-        }
-
-        .tab-buttons {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 10px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-
-        .tab-btn.active {
-            background: linear-gradient(90deg, #059669 0%, #10b981 100%);
-            color: white;
-        }
-
-        .tab-btn:not(.active) {
-            background: rgba(30, 41, 59, 0.6);
-            color: #94a3b8;
-        }
-
-        .tab-btn:hover:not(.active) {
-            background: rgba(59, 130, 246, 0.3);
-        }
-
-        textarea {
-            width: 100%;
-            height: 120px;
-            padding: 14px;
-            border-radius: 12px;
-            border: 2px solid rgba(255,255,255,0.1);
-            background: rgba(15, 23, 42, 0.6);
-            color: #e2e8f0;
-            font-size: 14px;
-            resize: vertical;
-            font-family: 'Courier New', monospace;
-        }
-
-        textarea:focus { outline: none; border-color: #10b981; }
-
-        .btn-primary {
-            width: 100%;
-            padding: 14px;
-            margin-top: 12px;
-            background: linear-gradient(90deg, #059669 0%, #10b981 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 15px;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-        }
-
-        .btn-primary:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 18px;
-            height: 18px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-right: 8px;
-            vertical-align: middle;
-        }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .analysis-progress {
-            background: rgba(30, 41, 59, 0.8);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .progress-header {
-            font-size: 14px;
-            color: #10b981;
-            margin-bottom: 16px;
-            font-weight: 600;
-        }
-
-        .bank-progress-item {
-            background: rgba(15, 23, 42, 0.6);
-            padding: 16px;
-            border-radius: 12px;
-            margin-bottom: 12px;
-            border-left: 4px solid #3b82f6;
-            transition: all 0.3s;
-        }
-
-        .bank-progress-item.completed {
-            border-left-color: #10b981;
-            background: rgba(16, 185, 129, 0.1);
-        }
-
-        .bank-progress-item.error {
-            border-left-color: #ef4444;
-            background: rgba(239, 68, 68, 0.1);
-        }
-
-        .progress-status {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .status-icon {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-        }
-
-        .status-pending { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
-        .status-crawling { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
-        .status-analyzing { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
-        .status-done { background: rgba(16, 185, 129, 0.2); color: #10b981; }
-        .status-error { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-
-        .progress-details {
-            margin-top: 8px;
-            font-size: 12px;
-            color: #64748b;
-            padding-left: 36px;
-        }
-
-        .bank-detail-card {
-            background: rgba(30, 41, 59, 0.6);
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(255,255,255,0.08);
-            border-left: 4px solid #10b981;
-        }
-
-        .bank-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 20px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .bank-title {
-            font-size: 20px;
-            font-weight: 700;
-            color: #10b981;
-        }
-
-        .bank-code {
-            font-size: 12px;
-            color: #64748b;
-            background: rgba(100, 116, 139, 0.2);
-            padding: 4px 10px;
-            border-radius: 20px;
-            margin-top: 6px;
-            display: inline-block;
-        }
-
-        .quality-badge {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .quality-deep { background: rgba(16, 185, 129, 0.2); color: #10b981; }
-        .quality-good { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
-        .quality-limited { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
-        .quality-error { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-
-        .section-title {
-            font-size: 12px;
-            text-transform: uppercase;
-            color: #94a3b8;
-            letter-spacing: 0.5px;
-            margin: 20px 0 12px 0;
-            font-weight: 600;
-        }
-
-        .product-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .product-tag {
-            padding: 8px 14px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 500;
-        }
-
-        .tag-savings { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-        .tag-loan { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
-        .tag-card { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-        .tag-digital { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.3); }
-        .tag-insurance { background: rgba(236, 72, 153, 0.15); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3); }
-        .tag-investment { background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3); }
-        .tag-other { background: rgba(100, 116, 139, 0.15); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.3); }
-
-        .strategic-box {
-            background: rgba(15, 23, 42, 0.8);
-            padding: 16px;
-            border-radius: 12px;
-            margin-bottom: 12px;
-        }
-
-        .strategic-box h4 {
-            font-size: 13px;
-            color: #10b981;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-
-        .strategic-box p, .strategic-box li {
-            font-size: 13px;
-            line-height: 1.7;
-            color: #cbd5e1;
-        }
-
-        .strategic-box ul {
-            margin-left: 16px;
-        }
-
-        .strategic-box li {
-            margin-bottom: 4px;
-        }
-
-        .metric-row {
-            display: flex;
-            gap: 16px;
-            margin-top: 16px;
-        }
-
-        .metric-item {
-            flex: 1;
-            background: rgba(15, 23, 42, 0.6);
-            padding: 12px;
-            border-radius: 10px;
-            text-align: center;
-        }
-
-        .metric-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: #10b981;
-        }
-
-        .metric-label {
-            font-size: 11px;
-            color: #64748b;
-            text-transform: uppercase;
-            margin-top: 4px;
-        }
-
-        .right-panel {
-            width: 55%;
-            padding: 24px;
-            overflow-y: auto;
-            background: rgba(10, 14, 39, 0.8);
-        }
-
-        .panel-header {
-            font-size: 18px;
-            font-weight: 700;
-            color: #f8fafc;
-            margin-bottom: 20px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .strategy-overview {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 24px;
-        }
-
-        .strategy-overview h3 {
-            font-size: 14px;
-            color: #10b981;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-        }
-
-        .strategy-overview p {
-            font-size: 15px;
-            line-height: 1.8;
-            color: #e2e8f0;
-        }
-
-        .ranking-table {
-            background: rgba(30, 41, 59, 0.6);
-            border-radius: 16px;
-            overflow: hidden;
-            margin-bottom: 24px;
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .ranking-header {
-            background: rgba(16, 185, 129, 0.2);
-            padding: 16px 20px;
-            font-size: 14px;
-            font-weight: 600;
-            color: #10b981;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .ranking-item {
-            display: flex;
-            align-items: center;
-            padding: 16px 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .rank-number {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 16px;
-            margin-right: 16px;
-        }
-
-        .rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1f3a; }
-        .rank-2 { background: linear-gradient(135deg, #94a3b8, #64748b); color: #1a1f3a; }
-        .rank-3 { background: linear-gradient(135deg, #cd7f32, #b45309); color: white; }
-        .rank-other { background: rgba(100, 116, 139, 0.3); color: #94a3b8; }
-
-        .rank-info {
-            flex: 1;
-        }
-
-        .rank-bank-name {
-            font-size: 16px;
-            font-weight: 600;
-            color: #f1f5f9;
-        }
-
-        .rank-position {
-            font-size: 12px;
-            color: #64748b;
-            margin-top: 2px;
-        }
-
-        .rank-score {
-            text-align: right;
-        }
-
-        .score-value {
-            font-size: 20px;
-            font-weight: 700;
-            color: #10b981;
-        }
-
-        .score-label {
-            font-size: 11px;
-            color: #64748b;
-            text-transform: uppercase;
-        }
-
-        .competitor-deep-dive {
-            background: rgba(30, 41, 59, 0.6);
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .competitor-deep-dive h3 {
-            font-size: 16px;
-            color: #3b82f6;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .strategy-section {
-            margin-bottom: 20px;
-        }
-
-        .strategy-section h4 {
-            font-size: 13px;
-            color: #10b981;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 10px;
-        }
-
-        .strategy-section p {
-            font-size: 14px;
-            line-height: 1.7;
-            color: #cbd5e1;
-            background: rgba(15, 23, 42, 0.4);
-            padding: 12px;
-            border-radius: 8px;
-        }
-
-        .roadmap-timeline {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .roadmap-phase {
-            background: rgba(15, 23, 42, 0.6);
-            border-left: 4px solid #10b981;
-            padding: 16px;
-            border-radius: 0 12px 12px 0;
-        }
-
-        .roadmap-phase h5 {
-            font-size: 14px;
-            color: #10b981;
-            margin-bottom: 10px;
-        }
-
-        .roadmap-phase ul {
-            margin-left: 16px;
-            font-size: 13px;
-            color: #94a3b8;
-            line-height: 1.8;
-        }
-
-        .hidden { display: none !important; }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #64748b;
-        }
-
-        .error-display {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-        }
-
-        .error-display h3 {
-            color: #ef4444;
-            margin-bottom: 8px;
-            font-size: 16px;
-        }
-
-        .error-display p {
-            color: #cbd5e1;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .file-upload-area {
-            background: rgba(15, 23, 42, 0.6);
-            padding: 20px;
-            border-radius: 12px;
-            border: 2px dashed rgba(16, 185, 129, 0.3);
-            text-align: center;
-        }
-
-        .file-upload-area input[type="file"] {
-            width: 100%;
-            padding: 12px;
-            background: rgba(30, 41, 59, 0.8);
-            border-radius: 8px;
-            color: #e2e8f0;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .file-upload-area p {
-            font-size: 13px;
-            color: #94a3b8;
-            margin-top: 10px;
-            line-height: 1.6;
-        }
-
-        @media (max-width: 1200px) {
-            .main-container { flex-direction: column; height: auto; }
-            .left-panel, .right-panel { width: 100%; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Banking Deep Intelligence</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+  color: #e2e8f0; min-height: 100vh;
+}
+.header {
+  background: linear-gradient(90deg, #0d4a3a 0%, #0a7c5c 100%);
+  padding: 20px 30px;
+  box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+}
+.header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+.header .subtitle { font-size: 14px; opacity: 0.9; margin-top: 6px; }
+.main-container { display: flex; height: calc(100vh - 82px); overflow: hidden; }
+.left-panel {
+  width: 45%; background: rgba(15,23,42,0.95);
+  padding: 20px; overflow-y: auto;
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+.right-panel {
+  width: 55%; padding: 20px;
+  overflow-y: auto; background: rgba(10,14,39,0.8);
+}
+.input-section {
+  background: rgba(30,41,59,0.8); padding: 18px;
+  border-radius: 16px; margin-bottom: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.input-section h3 {
+  font-size: 12px; text-transform: uppercase;
+  color: #64748b; margin-bottom: 12px; letter-spacing: 0.5px;
+}
+.tab-buttons { display: flex; gap: 10px; margin-bottom: 14px; }
+.tab-btn {
+  flex: 1; padding: 9px; border: none;
+  border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;
+}
+.tab-btn.active {
+  background: linear-gradient(90deg, #059669, #10b981); color: white;
+}
+.tab-btn:not(.active) {
+  background: rgba(30,41,59,0.6); color: #94a3b8;
+}
+.tab-btn:hover:not(.active) { background: rgba(59,130,246,0.3); }
+textarea {
+  width: 100%; height: 110px; padding: 12px;
+  border-radius: 10px; border: 2px solid rgba(255,255,255,0.1);
+  background: rgba(15,23,42,0.6); color: #e2e8f0;
+  font-size: 13px; resize: vertical; font-family: 'Courier New', monospace;
+}
+textarea:focus { outline: none; border-color: #10b981; }
+.btn-primary {
+  width: 100%; padding: 13px; margin-top: 10px;
+  background: linear-gradient(90deg, #059669, #10b981);
+  color: white; border: none; border-radius: 10px;
+  font-weight: 700; cursor: pointer; font-size: 15px; transition: all 0.3s;
+}
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px); box-shadow: 0 8px 25px rgba(16,185,129,0.4);
+}
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.spinner {
+  display: inline-block; width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white; border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 6px; vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Bank card */
+.bank-detail-card {
+  background: rgba(30,41,59,0.6); border-radius: 14px;
+  padding: 20px; margin-bottom: 18px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-left: 4px solid #10b981;
+}
+.bank-header {
+  display: flex; justify-content: space-between;
+  align-items: flex-start; margin-bottom: 16px;
+  padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.bank-title { font-size: 19px; font-weight: 700; color: #10b981; }
+.bank-code {
+  font-size: 11px; color: #64748b;
+  background: rgba(100,116,139,0.2);
+  padding: 3px 8px; border-radius: 12px; margin-top: 4px; display: inline-block;
+}
+.source-badge {
+  font-size: 10px; padding: 2px 7px; border-radius: 10px;
+  margin-top: 4px; margin-left: 6px; display: inline-block;
+}
+.source-live { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+.source-kb { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+.quality-badge {
+  padding: 5px 10px; border-radius: 16px;
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+}
+.quality-deep { background: rgba(16,185,129,0.2); color: #10b981; }
+.quality-good { background: rgba(59,130,246,0.2); color: #3b82f6; }
+.quality-limited { background: rgba(245,158,11,0.2); color: #f59e0b; }
+.quality-error { background: rgba(239,68,68,0.2); color: #ef4444; }
+.section-title {
+  font-size: 11px; text-transform: uppercase; color: #94a3b8;
+  letter-spacing: 0.5px; margin: 16px 0 10px 0; font-weight: 600;
+}
+.product-list { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+.product-tag {
+  padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 500;
+}
+.tag-savings { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+.tag-loan { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+.tag-card { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+.tag-digital { background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); }
+.tag-insurance { background: rgba(236,72,153,0.15); color: #f472b6; border: 1px solid rgba(236,72,153,0.3); }
+.tag-investment { background: rgba(14,165,233,0.15); color: #38bdf8; border: 1px solid rgba(14,165,233,0.3); }
+.tag-other { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+.strategic-box {
+  background: rgba(15,23,42,0.8); padding: 13px;
+  border-radius: 10px; margin-bottom: 10px;
+}
+.strategic-box h4 { font-size: 12px; color: #10b981; margin-bottom: 6px; font-weight: 600; }
+.strategic-box p, .strategic-box li { font-size: 13px; line-height: 1.7; color: #cbd5e1; }
+.strategic-box ul { margin-left: 14px; }
+.strategic-box li { margin-bottom: 3px; }
+.metric-row { display: flex; gap: 12px; margin-top: 12px; }
+.metric-item {
+  flex: 1; background: rgba(15,23,42,0.6);
+  padding: 10px; border-radius: 8px; text-align: center;
+}
+.metric-value { font-size: 22px; font-weight: 700; color: #10b981; }
+.metric-label { font-size: 10px; color: #64748b; text-transform: uppercase; margin-top: 3px; }
+
+/* Right panel */
+.panel-header {
+  font-size: 17px; font-weight: 700; color: #f8fafc;
+  margin-bottom: 18px; padding-bottom: 10px;
+  border-bottom: 2px solid rgba(16,185,129,0.3);
+}
+.strategy-overview {
+  background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.05));
+  border: 1px solid rgba(16,185,129,0.2);
+  border-radius: 14px; padding: 20px; margin-bottom: 20px;
+}
+.strategy-overview h3 {
+  font-size: 13px; color: #10b981; text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 10px;
+}
+.strategy-overview p { font-size: 14px; line-height: 1.8; color: #e2e8f0; }
+.ranking-table {
+  background: rgba(30,41,59,0.6); border-radius: 14px;
+  overflow: hidden; margin-bottom: 20px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.ranking-header {
+  background: rgba(16,185,129,0.2); padding: 14px 18px;
+  font-size: 13px; font-weight: 600; color: #10b981;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.ranking-item {
+  display: flex; align-items: center;
+  padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.rank-number {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 15px; margin-right: 14px;
+}
+.rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1f3a; }
+.rank-2 { background: linear-gradient(135deg, #94a3b8, #64748b); color: #1a1f3a; }
+.rank-3 { background: linear-gradient(135deg, #cd7f32, #b45309); color: white; }
+.rank-other { background: rgba(100,116,139,0.3); color: #94a3b8; }
+.rank-info { flex: 1; }
+.rank-bank-name { font-size: 15px; font-weight: 600; color: #f1f5f9; }
+.rank-position { font-size: 11px; color: #64748b; margin-top: 2px; }
+.rank-score { text-align: right; }
+.score-value { font-size: 19px; font-weight: 700; color: #10b981; }
+.score-label { font-size: 10px; color: #64748b; text-transform: uppercase; }
+.competitor-deep-dive {
+  background: rgba(30,41,59,0.6); border-radius: 14px;
+  padding: 20px; margin-bottom: 18px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.competitor-deep-dive h3 {
+  font-size: 15px; color: #3b82f6; margin-bottom: 14px;
+  padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.strategy-section { margin-bottom: 16px; }
+.strategy-section h4 {
+  font-size: 12px; color: #10b981; text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 8px;
+}
+.strategy-section p {
+  font-size: 13px; line-height: 1.7; color: #cbd5e1;
+  background: rgba(15,23,42,0.4); padding: 10px; border-radius: 7px;
+}
+.roadmap-phase {
+  background: rgba(15,23,42,0.6); border-left: 4px solid #10b981;
+  padding: 14px; border-radius: 0 10px 10px 0; margin-bottom: 12px;
+}
+.roadmap-phase h5 { font-size: 13px; color: #10b981; margin-bottom: 8px; }
+.roadmap-phase ul { margin-left: 14px; font-size: 12px; color: #94a3b8; line-height: 1.8; }
+.empty-state { text-align: center; padding: 50px 20px; color: #64748b; }
+.error-display {
+  background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+  padding: 16px; border-radius: 10px; margin-bottom: 16px;
+}
+.error-display h3 { color: #ef4444; margin-bottom: 6px; font-size: 15px; }
+.error-display p { color: #cbd5e1; font-size: 13px; line-height: 1.6; }
+.meta-info {
+  background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2);
+  padding: 10px 14px; border-radius: 8px; margin-bottom: 16px;
+  font-size: 12px; color: #94a3b8;
+}
+.file-upload-area {
+  background: rgba(15,23,42,0.6); padding: 16px; border-radius: 10px;
+  border: 2px dashed rgba(16,185,129,0.3); text-align: center;
+}
+.file-upload-area input[type="file"] {
+  width: 100%; padding: 10px; background: rgba(30,41,59,0.8);
+  border-radius: 7px; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1);
+}
+.file-upload-area p { font-size: 12px; color: #94a3b8; margin-top: 8px; line-height: 1.6; }
+@media (max-width: 1100px) {
+  .main-container { flex-direction: column; height: auto; }
+  .left-panel, .right-panel { width: 100%; }
+}
+</style>
 </head>
 <body>
-
 <div class="header">
-    <h1>🏦 AI Banking Deep Intelligence</h1>
-    <div class="subtitle">Phân tích chuyên sâu sản phẩm & Chiến lược cạnh tranh ngân hàng</div>
+  <h1>🏦 AI Banking Deep Intelligence</h1>
+  <div class="subtitle">Phân tích chuyên sâu sản phẩm &amp; Chiến lược cạnh tranh ngân hàng</div>
 </div>
 
 <div class="main-container">
+  <!-- LEFT: Chi tiết từng ngân hàng -->
+  <div class="left-panel">
+    <div class="input-section">
+      <h3>🎯 Dữ Liệu Đầu Vào</h3>
+      <div class="tab-buttons">
+        <button id="tab-url" class="tab-btn active" onclick="switchTab(0)">🔗 URLs</button>
+        <button id="tab-file" class="tab-btn" onclick="switchTab(1)">📁 Upload File</button>
+      </div>
 
-    <!-- LEFT PANEL: Chi tiết từng ngân hàng -->
-    <div class="left-panel">
-        <div class="input-section">
-            <h3>🎯 Dữ Liệu Đầu Vào</h3>
-            
-            <!-- Tab Buttons -->
-            <div class="tab-buttons">
-                <button id="tab-url" class="tab-btn active" onclick="switchTab(0)">🔗 URLs</button>
-                <button id="tab-file" class="tab-btn" onclick="switchTab(1)">📁 Upload File</button>
-            </div>
-
-            <!-- URL Input Section -->
-            <div id="url-section">
-                <textarea id="urls" placeholder="Nhập mỗi URL trên một dòng...">
-https://techcombank.com/
+      <div id="url-section">
+        <textarea id="urls" placeholder="Nhập mỗi URL trên một dòng...">https://techcombank.com/
 https://bidv.com.vn/
 https://www.vietinbank.vn/
 https://www.vietcombank.com.vn/</textarea>
-                <button class="btn-primary" onclick="analyze()" id="analyzeBtn">
-                    <span id="btn-text">🔍 Phân Tích Chuyên Sâu</span>
-                </button>
-            </div>
+        <button class="btn-primary" onclick="analyze()" id="analyzeBtn">
+          <span id="btn-text">🔍 Phân Tích Chuyên Sâu</span>
+        </button>
+      </div>
 
-            <!-- File Upload Section (Hidden by default) -->
-            <div id="file-section" style="display: none;">
-                <h3 style="margin-top: 20px;">📤 Upload File Dữ Liệu Ngân Hàng</h3>
-                <div class="file-upload-area">
-                    <input type="file" id="fileInput" accept=".xlsx,.csv,.pdf">
-                    <p>Hỗ trợ: XLSX, CSV, PDF<br>Cần có cột: <strong>ten_ngan_hang</strong>, <strong>loai_san_pham</strong></p>
-                </div>
-                <button class="btn-primary" onclick="analyzeFromFile()" id="uploadBtn">
-                    <span id="upload-btn-text">📤 Upload & Phân Tích</span>
-                </button>
-            </div>
-
-            <div id="banksContainer">
-                <div class="empty-state">
-                    <div style="font-size: 48px; margin-bottom: 16px;">🏦</div>
-                    <p>Nhập URLs hoặc Upload File để bắt đầu</p>
-                    <p style="font-size: 12px; margin-top: 8px; opacity: 0.6;">
-                        AI sẽ phân tích từng ngân hàng chi tiết (crawl → AI extraction → strategy)
-                    </p>
-                </div>
-            </div>
+      <div id="file-section" style="display:none;">
+        <div class="file-upload-area" style="margin-top:14px;">
+          <input type="file" id="fileInput" accept=".xlsx,.csv,.pdf">
+          <p>Hỗ trợ: XLSX, CSV, PDF<br>Cần cột: <strong>ten_ngan_hang</strong>, <strong>loai_san_pham</strong></p>
         </div>
-
+        <button class="btn-primary" onclick="analyzeFromFile()" id="uploadBtn" style="margin-top:10px;">
+          <span id="upload-btn-text">📤 Upload &amp; Phân Tích</span>
+        </button>
+      </div>
     </div>
 
-    <!-- RIGHT PANEL: So sánh & Chiến lược tổng thể -->
-    <div class="right-panel">
-        <div class="panel-header">📊 Phân Tích Cạnh Tranh & Chiến Lược Tổng Thể</div>
-        
-        <div id="strategyContainer">
-            <div class="empty-state">
-                <div style="font-size: 48px; margin-bottom: 16px;">📈</div>
-                <p>Phân tích chiến lược so sánh sẽ hiển thị ở đây sau khi AI hoàn thành</p>
-            </div>
-        </div>
+    <div id="banksContainer">
+      <div class="empty-state">
+        <div style="font-size:44px;margin-bottom:14px;">🏦</div>
+        <p>Nhập URLs hoặc Upload File để bắt đầu</p>
+        <p style="font-size:12px;margin-top:8px;opacity:0.6;">
+          AI sẽ phân tích từng ngân hàng (crawl → AI extraction → insights)
+        </p>
+      </div>
     </div>
+  </div>
+
+  <!-- RIGHT: Chiến lược tổng thể -->
+  <div class="right-panel">
+    <div class="panel-header">📊 Phân Tích Cạnh Tranh &amp; Chiến Lược Tổng Thể</div>
+    <div id="strategyContainer">
+      <div class="empty-state">
+        <div style="font-size:44px;margin-bottom:14px;">📈</div>
+        <p>Phân tích chiến lược so sánh sẽ hiển thị ở đây</p>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-// ============================================
-// GLOBAL STATE & CONFIGURATION
-// ============================================
-let currentAnalysis = {
-    urls: [],
-    results: [],
-    completed: 0,
-    errors: []
+// ============================================================
+// HELPERS
+// ============================================================
+function switchTab(tab) {
+  document.getElementById('url-section').style.display = tab === 0 ? 'block' : 'none';
+  document.getElementById('file-section').style.display = tab === 1 ? 'block' : 'none';
+  document.getElementById('tab-url').classList.toggle('active', tab === 0);
+  document.getElementById('tab-file').classList.toggle('active', tab === 1);
+}
+
+function setLoading(btnId, textId, loading, defaultText) {
+  const btn = document.getElementById(btnId);
+  const txt = document.getElementById(textId);
+  btn.disabled = loading;
+  txt.innerHTML = loading
+    ? '<span class="spinner"></span> Đang phân tích...'
+    : defaultText;
+}
+
+// ============================================================
+// MAIN ANALYZE
+// ============================================================
+async function analyze() {
+  const urls = document.getElementById('urls').value
+    .split('\n').map(u => u.trim()).filter(Boolean);
+  if (!urls.length) { alert('Vui lòng nhập ít nhất 1 URL'); return; }
+
+  setLoading('analyzeBtn', 'btn-text', true);
+  showProgress(urls);
+
+  try {
+    const res = await fetch('/analyze', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({urls}),
+      signal: AbortSignal.timeout(360000)
+    });
+    const data = await res.json();
+    if (data.status === 'error') throw new Error(data.message);
+    renderAll(data);
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    setLoading('analyzeBtn', 'btn-text', false, '🔍 Phân Tích Chuyên Sâu');
+  }
+}
+
+async function analyzeFromFile() {
+  const fileInput = document.getElementById('fileInput');
+  if (!fileInput.files.length) { alert('Vui lòng chọn file!'); return; }
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  setLoading('uploadBtn', 'upload-btn-text', true);
+  try {
+    const res = await fetch('/api/analyze-upload', {method:'POST', body: formData});
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderAll(data);
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    setLoading('uploadBtn', 'upload-btn-text', false, '📤 Upload & Phân Tích');
+  }
+}
+
+// ============================================================
+// PROGRESS
+// ============================================================
+function showProgress(urls) {
+  const html = `
+    <div style="background:rgba(30,41,59,0.8);border-radius:14px;padding:18px;">
+      <div style="font-size:13px;color:#10b981;margin-bottom:14px;font-weight:600;">
+        🤖 AI đang phân tích ${urls.length} ngân hàng...
+      </div>
+      ${urls.map(u => `
+        <div style="background:rgba(15,23,42,0.6);padding:13px;border-radius:10px;margin-bottom:10px;border-left:4px solid #3b82f6;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="spinner" style="width:14px;height:14px;flex-shrink:0;"></span>
+            <span style="font-size:13px;color:#e2e8f0;">${u}</span>
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-top:5px;padding-left:24px;">
+            Crawl → AI Extraction → Generate insights...
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+  document.getElementById('banksContainer').innerHTML = html;
+  document.getElementById('strategyContainer').innerHTML = `
+    <div class="empty-state">
+      <span class="spinner" style="width:32px;height:32px;border-width:3px;margin-bottom:16px;display:inline-block;"></span>
+      <p style="margin-top:10px;">Đang tổng hợp chiến lược...</p>
+    </div>`;
+}
+
+// ============================================================
+// RENDER ALL
+// ============================================================
+function renderAll(data) {
+  const meta = data.meta || {};
+  if (meta.from_knowledge_base > 0) {
+    document.getElementById('banksContainer').insertAdjacentHTML('afterbegin', `
+      <div class="meta-info">
+        ℹ️ ${meta.from_knowledge_base}/${meta.total} ngân hàng dùng knowledge base (website chặn bot).
+        Dữ liệu vẫn đầy đủ và chính xác.
+      </div>`);
+  }
+  renderBankDetails(data.results || []);
+  renderStrategy(data.strategy || {});
+}
+
+function showError(msg) {
+  document.getElementById('banksContainer').innerHTML = `
+    <div class="error-display">
+      <h3>❌ Lỗi Phân Tích</h3>
+      <p>${msg}</p>
+    </div>`;
+  document.getElementById('strategyContainer').innerHTML = `
+    <div class="empty-state"><div style="font-size:40px;margin-bottom:14px;">⚠️</div>
+    <p>Không thể tạo chiến lược</p></div>`;
+}
+
+// ============================================================
+// RENDER BANK DETAILS
+// ============================================================
+const CAT_COLORS = {
+  SAVINGS:'tag-savings', LOAN:'tag-loan', CARD:'tag-card',
+  DIGITAL:'tag-digital', INSURANCE:'tag-insurance',
+  INVESTMENT:'tag-investment', OTHER:'tag-other'
+};
+const CAT_NAMES = {
+  SAVINGS:'Tiết Kiệm', LOAN:'Cho Vay', CARD:'Thẻ',
+  DIGITAL:'Ngân Hàng Số', INSURANCE:'Bảo Hiểm',
+  INVESTMENT:'Đầu Tư', OTHER:'Khác'
 };
 
-// ============================================
-// TAB SWITCHING LOGIC
-// ============================================
-function switchTab(tab) {
-    const urlSection = document.getElementById('url-section');
-    const fileSection = document.getElementById('file-section');
-    const tabUrl = document.getElementById('tab-url');
-    const tabFile = document.getElementById('tab-file');
-    
-    if (tab === 0) {
-        urlSection.style.display = 'block';
-        fileSection.style.display = 'none';
-        tabUrl.classList.add('active');
-        tabFile.classList.remove('active');
-    } else {
-        urlSection.style.display = 'none';
-        fileSection.style.display = 'block';
-        tabUrl.classList.remove('active');
-        tabFile.classList.add('active');
-    }
-}
+function renderBankDetails(results) {
+  const container = document.getElementById('banksContainer');
+  const existing = container.querySelector('.meta-info');
+  container.innerHTML = '';
+  if (existing) container.appendChild(existing);
 
-// ============================================
-// MAIN ANALYSIS FUNCTION
-// ============================================
-async function analyze() {
-    const btn = document.getElementById('analyzeBtn');
-    const btnText = document.getElementById('btn-text');
-    const urls = document.getElementById('urls').value
-        .split('\n')
-        .map(u => u.trim())
-        .filter(u => u);
+  if (!results.length) {
+    container.innerHTML += `<div class="empty-state"><p>Không có dữ liệu ngân hàng</p></div>`;
+    return;
+  }
 
-    if (urls.length === 0) {
-        alert('Vui lòng nhập ít nhất một URL');
-        return;
-    }
+  results.forEach(result => {
+    const a = result.analysis || {};
+    const strategic = a.strategic_analysis || {};
+    const competitive = a.competitive_assessment || {};
+    const isError = result.extraction_quality === 'error';
 
-    // Reset state
-    currentAnalysis = {
-        urls: urls,
-        results: [],
-        completed: 0,
-        errors: []
-    };
+    const card = document.createElement('div');
+    card.className = 'bank-detail-card';
+    if (isError) card.style.borderLeftColor = '#ef4444';
 
-    // Loading state
-    btn.disabled = true;
-    btnText.innerHTML = '<span class="spinner"></span> Đang khởi tạo...';
-    
-    // Hiển thị progress tracking
-    renderProgress();
-    
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 phút
+    const quality = result.extraction_quality || 'limited';
+    const qualityLabels = {deep:'Deep Analysis', good:'Good', limited:'Limited', error:'ERROR'};
+    const sourceBadge = result.source === 'knowledge_base'
+      ? '<span class="source-badge source-kb">📚 Knowledge Base</span>'
+      : result.source === 'live_crawl'
+      ? '<span class="source-badge source-live">🌐 Live Crawl</span>' : '';
 
-        const res = await fetch('/analyze', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({urls}),
-            signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!res.ok) {
-            const errorData = await res.json().catch(() => ({}));
-            throw new Error(errorData.message || `HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-        
-        if (data.status === 'error') {
-            throw new Error(data.message);
-        }
-
-        // Cập nhật progress Hoàn thành
-        currentAnalysis.completed = urls.length;
-        renderProgress();
-        
-        // Hiển thị kết quả
-        renderAll(data);
-        
-    } catch (error) {
-        console.error('Lỗi phân tích:', error);
-        
-        const banksContainer = document.getElementById('banksContainer');
-        banksContainer.innerHTML = `
-            <div class="error-display">
-                <h3>❌ Phân Tích Thất Bại</h3>
-                <p>${error.message}</p>
-                ${error.message.includes('timeout') ? `
-                    <p style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
-                        Phân tích chuyên sâu cần thời gian. Vui lòng thử với ít URL hơn (2-3 thay vì 4).
-                    </p>
-                ` : ''}
-                ${error.message.includes('rate limit') ? `
-                    <p style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
-                        Groq API đang bận. Vui lòng đợi 30 giây và thử lại.
-                    </p>
-                ` : ''}
-            </div>
-        `;
-        
-        document.getElementById('strategyContainer').innerHTML = `
-            <div class="empty-state">
-                <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-                <p>Không thể tạo chiến lược do lỗi Phân tích</p>
-            <p style="font-size: 12px; margin-top: 8px; opacity: 0.6;">
-                Vui lòng thử lại sau hoặc liên hệ hỗ trợ.
-            </p>
-            </div>
-        `;
-    } finally {
-        btn.disabled = false;
-        btnText.innerHTML = '🔍 Phân Tích Chuyên Sâu';
-    }
-}
-
-// ============================================
-// FILE UPLOAD ANALYSIS
-// ============================================
-async function analyzeFromFile() {
-    const fileInput = document.getElementById('fileInput');
-    const btn = document.getElementById('uploadBtn');
-    const btnText = document.getElementById('upload-btn-text');
-    
-    if (!fileInput.files.length) {
-        alert('Vui lòng chọn file!');
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
-
-    btn.disabled = true;
-    btnText.innerHTML = '<span class="spinner"></span> Đang xử lý file...';
-
-    try {
-        const res = await fetch('/api/analyze-upload', {
-            method: 'POST',
-            body: formData
-        });
-        const data = await res.json();
-
-        if (data.error) throw new Error(data.error);
-
-        renderAll({results: data.results || [], strategy: data.strategy});
-
-    } catch (error) {
-        document.getElementById('strategyContainer').innerHTML = `
-            <div class="error-display">
-                <h3>❌ Lỗi Upload</h3>
-                <p>${error.message}</p>
-            </div>`;
-    } finally {
-        btn.disabled = false;
-        btnText.innerHTML = '📤 Upload & Phân Tích';
-    }
-}
-
-// ============================================
-// RENDER FUNCTIONS
-// ============================================
-function renderProgress() {
-    const container = document.getElementById('banksContainer');
-    const urls = currentAnalysis.urls;
-    
-    let html = `
-        <div class="analysis-progress">
-            <div class="progress-header">
-                🤖 AI Deep Analysis Progress 
-                <span style="color: #64748b; font-weight: normal;">
-                    (${currentAnalysis.completed}/${urls.length} hoàn thành)
-                </span>
-            </div>
-    `;
-    
-    urls.forEach((url, i) => {
-        const isCompleted = i < currentAnalysis.completed;
-        const statusClass = isCompleted ? 'completed' : '';
-        const statusIcon = isCompleted ? '✓' : (i === currentAnalysis.completed ? '●' : '○');
-        const statusIconClass = isCompleted ? 'status-done' : (i === currentAnalysis.completed ? 'status-analyzing' : 'status-pending');
-        const statusText = isCompleted ? 'Hoàn Thành' : (i === currentAnalysis.completed ? 'Đang Phân Tích AI...' : 'Đang chờ...');
-        
-        html += `
-            <div class="bank-progress-item ${statusClass}" id="progress-${i}">
-                <div class="progress-status">
-                    <div class="status-icon ${statusIconClass}">${statusIcon}</div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; color: #e2e8f0; font-size: 14px;">${url}</div>
-                        <div style="font-size: 12px; color: #64748b; margin-top: 2px;">${statusText}</div>
-                    </div>
-                    ${i === currentAnalysis.completed ? `
-                        <div class="progress-details">
-                            <span class="spinner" style="width: 12px; height: 12px; margin-right: 6px;"></span>
-                            Crawl website → Extract content → AI deep analysis → Generate insights
-                        </div>
-                    ` : ''}
-                </div>
-        `;
+    // Group products by category
+    const byCategory = {};
+    (a.products || []).forEach(p => {
+      const cat = (p.category || 'OTHER').toUpperCase();
+      if (!byCategory[cat]) byCategory[cat] = [];
+      byCategory[cat].push(p);
     });
-    
-    html += '</div>';
-    container.innerHTML = html;
+
+    const rates = a.interest_rates || {};
+
+    card.innerHTML = `
+      <div class="bank-header">
+        <div>
+          <div class="bank-title" style="${isError ? 'color:#ef4444' : ''}">${a.bank_name || 'Unknown'}</div>
+          <span class="bank-code">${a.bank_code || ''}</span>${sourceBadge}
+        </div>
+        <span class="quality-badge quality-${quality}">${qualityLabels[quality] || quality}</span>
+      </div>
+
+      ${isError ? `
+        <div class="strategic-box" style="border-left:3px solid #ef4444">
+          <h4 style="color:#ef4444">Lỗi</h4>
+          <p>${(competitive.weaknesses || ['Không thể phân tích']).join(', ')}</p>
+        </div>` : `
+
+      <div class="metric-row">
+        <div class="metric-item"><div class="metric-value">${(a.products||[]).length}</div><div class="metric-label">Sản Phẩm</div></div>
+        <div class="metric-item"><div class="metric-value">${(a.promotions||[]).length}</div><div class="metric-label">KM</div></div>
+        <div class="metric-item"><div class="metric-value">${(a.digital_capabilities||[]).length}</div><div class="metric-label">Digital</div></div>
+        <div class="metric-item"><div class="metric-value" style="font-size:14px">${competitive.market_position||'?'}</div><div class="metric-label">Vị Thế</div></div>
+      </div>
+
+      ${Object.keys(byCategory).length ? `
+        <div class="section-title">📦 Sản Phẩm</div>
+        ${Object.entries(byCategory).map(([cat, prods]) => `
+          <div style="margin-bottom:10px">
+            <div style="font-size:11px;color:#64748b;margin-bottom:5px;text-transform:uppercase">
+              ${CAT_NAMES[cat]||cat} (${prods.length})
+            </div>
+            <div class="product-list">
+              ${prods.map(p => `
+                <span class="product-tag ${CAT_COLORS[cat]||'tag-other'}"
+                  title="${(p.features||[]).join(', ')}">
+                  ${p.name||p}
+                </span>`).join('')}
+            </div>
+          </div>`).join('')}` : ''}
+
+      ${Object.keys(rates).length ? `
+        <div class="section-title">💰 Lãi Suất</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px">
+          ${Object.entries(rates).map(([k,v]) => `
+            <div style="background:rgba(16,185,129,0.1);padding:7px 11px;border-radius:7px;font-size:12px">
+              <span style="color:#64748b">${k.replace(/_/g,' ')}:</span>
+              <span style="color:#10b981;font-weight:600;margin-left:4px">${v}</span>
+            </div>`).join('')}
+        </div>` : ''}
+
+      ${(a.promotions||[]).length ? `
+        <div class="section-title">🎁 Khuyến Mãi</div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          ${a.promotions.slice(0,4).map(p => `
+            <div style="background:rgba(245,158,11,0.1);padding:9px 12px;border-radius:7px;border-left:3px solid #f59e0b">
+              <div style="font-weight:600;color:#fbbf24;font-size:12px">${p.name||p}</div>
+              ${p.benefit ? `<div style="font-size:11px;color:#94a3b8;margin-top:3px">${p.benefit}</div>` : ''}
+              ${p.target_segment ? `<div style="font-size:11px;color:#64748b">🎯 ${p.target_segment}</div>` : ''}
+            </div>`).join('')}
+        </div>` : ''}
+
+      ${strategic.positioning ? `
+        <div class="section-title">🎯 Chiến Lược</div>
+        <div class="strategic-box">
+          <h4>Định Vị</h4><p>${strategic.positioning}</p>
+        </div>` : ''}
+
+      ${(strategic.key_differentiators||[]).length ? `
+        <div class="strategic-box">
+          <h4>Điểm Khác Biệt</h4>
+          <ul>${strategic.key_differentiators.map(d=>`<li>${d}</li>`).join('')}</ul>
+        </div>` : ''}
+
+      ${(competitive.strengths||[]).length || (competitive.weaknesses||[]).length ? `
+        <div class="section-title">💪 Cạnh Tranh</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="strategic-box" style="border-left:3px solid #10b981">
+            <h4 style="color:#10b981">Mạnh (${(competitive.strengths||[]).length})</h4>
+            <ul>${(competitive.strengths||[]).map(s=>`<li>${s}</li>`).join('')}</ul>
+          </div>
+          <div class="strategic-box" style="border-left:3px solid #ef4444">
+            <h4 style="color:#ef4444">Yếu (${(competitive.weaknesses||[]).length})</h4>
+            <ul>${(competitive.weaknesses||[]).map(w=>`<li>${w}</li>`).join('')}</ul>
+          </div>
+        </div>` : ''}
+
+      ${competitive.competitive_threat_level ? `
+        <div style="margin-top:10px;padding:9px;background:rgba(59,130,246,0.1);border-radius:7px;text-align:center;font-size:12px">
+          Mức đe dọa:
+          <span style="color:${competitive.competitive_threat_level==='High'?'#ef4444':competitive.competitive_threat_level==='Medium'?'#f59e0b':'#10b981'};font-weight:700;margin-left:4px">
+            ${competitive.competitive_threat_level}
+          </span>
+        </div>` : ''}
+
+      ${(a.digital_capabilities||[]).length ? `
+        <div class="section-title">💻 Digital</div>
+        <div class="product-list">
+          ${a.digital_capabilities.map(d=>`<span class="product-tag tag-digital">${d}</span>`).join('')}
+        </div>` : ''}
+      `}`;
+
+    container.appendChild(card);
+  });
 }
 
-function renderAll(data) {
-    const results = data.results || [];
-    const strategy = data.strategy || {};
-    const errors = data.errors || [];
-    
-    renderBankDetails(results, errors);
-    renderStrategy(strategy, results);
-}
+// ============================================================
+// RENDER STRATEGY (snake_case keys)
+// ============================================================
+function renderStrategy(strategy) {
+  const container = document.getElementById('strategyContainer');
+  if (!strategy || !strategy.executive_summary) {
+    container.innerHTML = `<div class="empty-state"><p>Không có dữ liệu chiến lược</p></div>`;
+    return;
+  }
 
-function renderBankDetails(results, errors) {
-    const container = document.getElementById('banksContainer');
-    container.innerHTML = '';
+  const ranking = strategy.competitive_ranking || [];
+  const detailed = strategy.detailed_competitor_analysis || [];
+  const recs = strategy.strategic_recommendations || {};
+  const matrix = strategy.product_comparison_matrix || {};
+  const opps = strategy.market_opportunities || [];
+  const risks = strategy.risk_mitigation || [];
 
-    if (results.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-                <p>Không có dữ liệu ngân hàng nào được phân tích</p>
-                <p style="font-size: 12px; margin-top: 8px; opacity: 0.6;">
-                    Có thể do website chặn bot hoặc không thể truy cập.
-                </p>
-            </div>
-        `;
-        return;
-    }
+  let html = '';
 
-    results.forEach((result, index) => {
-        const a = result.analysis || {};
-        const strategic = a.strategic_analysis || {};
-        const competitive = a.competitive_assessment || {};
-        
-        const isError = result.extraction_quality === 'error' || 
-                       (a.bank_name && a.bank_name.includes('LỖI:')) ||
-                       (a.bank_name === 'Unknown Bank');
-        
-        if (isError) {
-            const errorCard = document.createElement('div');
-            errorCard.className = 'bank-detail-card';
-            errorCard.style.borderLeftColor = '#ef4444';
-            errorCard.innerHTML = `
-                <div class="bank-header">
-                    <div>
-                        <div class="bank-title" style="color: #ef4444;">${a.bank_name || 'Lỗi Phân Tích'}</div>
-                        ${a.bank_code ? `<span class="bank-code">${a.bank_code}</span>` : ''}
-                    </div>
-                    <span class="quality-badge quality-error">ERROR</span>
-                </div>
-                <div class="strategic-box" style="border-left: 3px solid #ef4444;">
-                    <h4 style="color: #ef4444;">Chi tiết Lỗi</h4>
-                    <p>${(competitive.weaknesses || []).join(', ') || 'Không thể phân tích ngân hàng này. Website có thể chặn bot hoặc yêu cầu JavaScript.'}</p>
-                </div>
-            `;
-            container.appendChild(errorCard);
-            return;
-        }
-        
-        const quality = result.extraction_quality || 'limited';
-        const qualityClass = `quality-${quality}`;
-        const qualityText = quality === 'deep' ? 'Deep Analysis' : quality === 'good' ? 'Good' : 'Limited';
-        
-        const productsByCategory = {};
-        (a.products || []).forEach(p => {
-            const cat = (p.category || 'OTHER').toUpperCase();
-            if (!productsByCategory[cat]) productsByCategory[cat] = [];
-            productsByCategory[cat].push(p);
-        });
-        
-        const catColors = {
-            'SAVINGS': 'tag-savings',
-            'LOAN': 'tag-loan',
-            'CARD': 'tag-card',
-            'DIGITAL': 'tag-digital',
-            'INSURANCE': 'tag-insurance',
-            'INVESTMENT': 'tag-investment',
-            'OTHER': 'tag-other'
-        };
-        
-        const catNames = {
-            'SAVINGS': 'Tiết Kiệm',
-            'LOAN': 'Cho Vay',
-            'CARD': 'Thẻ',
-            'DIGITAL': 'Ngân Hàng Số',
-            'INSURANCE': 'Bảo Hiểm',
-            'INVESTMENT': 'Đầu Tư',
-            'OTHER': 'Khác'
-        };
+  if (strategy.executive_summary) {
+    html += `
+      <div class="strategy-overview">
+        <h3>📋 Tóm Tắt Chiến Lược</h3>
+        <p>${strategy.executive_summary}</p>
+      </div>`;
+  }
 
-        const card = document.createElement('div');
-        card.className = 'bank-detail-card';
-        card.innerHTML = `
-            <div class="bank-header">
-                <div>
-                    <div class="bank-title">${a.bank_name || 'Unknown Bank'}</div>
-                    ${a.bank_code ? `<span class="bank-code">${a.bank_code}</span>` : ''}
-                </div>
-                <span class="quality-badge ${qualityClass}">${qualityText}</span>
+  if (ranking.length) {
+    html += `
+      <div class="ranking-table">
+        <div class="ranking-header">🏆 Bảng Xếp Hạng Cạnh Tranh</div>
+        ${ranking.map((r, i) => `
+          <div class="ranking-item">
+            <div class="rank-number rank-${i<3?i+1:'other'}">${r.rank||i+1}</div>
+            <div class="rank-info">
+              <div class="rank-bank-name">${r.bank||''}</div>
+              <div class="rank-position">${r.position||''} ${r.key_strength?'• '+r.key_strength:''}</div>
+              ${r.analysis ? `<div style="font-size:11px;color:#64748b;margin-top:2px">${r.analysis}</div>` : ''}
             </div>
-            
-            <div class="metric-row">
-                <div class="metric-item">
-                    <div class="metric-value">${(a.products || []).length}</div>
-                    <div class="metric-label">Sản Phẩm</div>
-                </div>
-                <div class="metric-item">
-                    <div class="metric-value">${(a.promotions || []).length}</div>
-                    <div class="metric-label">Khuyến Mãi</div>
-                </div>
-                <div class="metric-item">
-                    <div class="metric-value">${(a.digital_capabilities || []).length}</div>
-                    <div class="metric-label">Digital</div>
-                </div>
-                <div class="metric-item">
-                    <div class="metric-value">${competitive.market_position || '?'}</div>
-                    <div class="metric-label">Vị Thế</div>
-                </div>
+            <div class="rank-score">
+              <div class="score-value">${r.score||'-'}</div>
+              <div class="score-label">Điểm</div>
             </div>
-            
-            ${Object.keys(productsByCategory).length > 0 ? `
-                <div class="section-title">📦 Danh Mục Sản Phẩm Chi Tiết</div>
-                ${Object.entries(productsByCategory).map(([cat, products]) => `
-                    <div style="margin-bottom: 12px;">
-                        <div style="font-size: 12px; color: #64748b; margin-bottom: 6px; text-transform: uppercase;">
-                            ${catNames[cat] || cat} (${products.length} Sản Phẩm)
-                        </div>
-                        <div class="product-list">
-                            ${products.map(p => `
-                                <span class="product-tag ${catColors[cat] || 'tag-other'}" 
-                                      title="${(p.features || []).join(', ')}">
-                                    ${p.name || p}
-                                </span>
-                            `).join('')}
-                        </div>
-                    </div>
-                `).join('')}
-            ` : '<div class="section-title">📦 Không tìm thấy sản phẩm</div>'}
-            
-            ${(a.promotions || []).length > 0 ? `
-                <div class="section-title">🎁 Chương Trình Khuyến Mãi</div>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    ${a.promotions.slice(0, 5).map(p => `
-                        <div style="background: rgba(245, 158, 11, 0.1); padding: 10px 14px; border-radius: 8px; border-left: 3px solid #f59e0b;">
-                            <div style="font-weight: 600; color: #fbbf24; font-size: 13px;">${p.name || p}</div>
-                            ${p.benefit ? `<div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">${p.benefit}</div>` : ''}
-                            ${p.target_segment ? `<div style="font-size: 12px; color: #64748b; margin-top: 2px;">Đối tượng: ${p.target_segment}</div>` : ''}
-                        </div>
-                    `).join('')}
-                </div>
-            ` : ''}
-            
-            ${strategic.positioning ? `
-                <div class="section-title">🎯 Chiến Lược Thương Hiệu</div>
-                <div class="strategic-box">
-                    <h4>Định Vị Thị Trường</h4>
-                    <p>${strategic.positioning}</p>
-                </div>
-            ` : ''}
-            
-            ${(strategic.target_segments || []).length > 0 ? `
-                <div class="strategic-box">
-                    <h4>Phân Khúc Khách Hàng Mục Tiêu</h4>
-                    <ul>
-                        ${strategic.target_segments.map(s => `<li>${s}</li>`).join('')}
-                    </ul>
-                </div>
-            ` : ''}
-            
-            ${(strategic.key_differentiators || []).length > 0 ? `
-                <div class="strategic-box">
-                    <h4>Điểm Khác Biệt Cạnh Tranh</h4>
-                    <ul>
-                        ${strategic.key_differentiators.map(d => `<li>${d}</li>`).join('')}
-                    </ul>
-                </div>
-            ` : ''}
-            
-            ${(competitive.strengths || []).length > 0 || (competitive.weaknesses || []).length > 0 ? `
-                <div class="section-title">💪 Đánh Giá Cạnh Tranh</div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <div class="strategic-box" style="border-left: 3px solid #10b981;">
-                        <h4 style="color: #10b981;">Điểm Mạnh (${competitive.strengths?.length || 0})</h4>
-                        <ul>
-                            ${(competitive.strengths || []).map(s => `<li>${s}</li>`).join('')}
-                        </ul>
-                    </div>
-                    <div class="strategic-box" style="border-left: 3px solid #ef4444;">
-                        <h4 style="color: #ef4444;">Điểm Yếu (${competitive.weaknesses?.length || 0})</h4>
-                        <ul>
-                            ${(competitive.weaknesses || []).map(w => `<li>${w}</li>`).join('')}
-                        </ul>
-                    </div>
-                </div>
-            ` : ''}
-            
-            ${competitive.competitive_threat_level ? `
-                <div style="margin-top: 12px; padding: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; text-align: center;">
-                    <span style="color: #64748b; font-size: 12px;">Mức độ đe dọa cạnh tranh: </span>
-                    <span style="color: ${competitive.competitive_threat_level === 'High' ? '#ef4444' : competitive.competitive_threat_level === 'Medium' ? '#f59e0b' : '#10b981'}; font-weight: 600;">
-                        ${competitive.competitive_threat_level}
-                    </span>
-                </div>
-            ` : ''}
-            
-            ${(a.interest_rates && Object.keys(a.interest_rates).length > 0) ? `
-                <div class="section-title">💰 Lãi Suất</div>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    ${Object.entries(a.interest_rates).map(([key, val]) => `
-                        <div style="background: rgba(16, 185, 129, 0.1); padding: 8px 12px; border-radius: 8px; font-size: 13px;">
-                            <span style="color: #64748b;">${key}:</span>
-                            <span style="color: #10b981; font-weight: 600; margin-left: 4px;">${val}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            ` : ''}
-            
-            ${(a.digital_capabilities || []).length > 0 ? `
-                <div class="section-title">💻 Khả Năng Số Hóa</div>
-                <div class="product-list">
-                    ${a.digital_capabilities.map(d => `
-                        <span class="product-tag tag-digital">${d}</span>
-                    `).join('')}
-                </div>
-            ` : ''}
-        `;
-        
-        container.appendChild(card);
-    });
-}
+          </div>`).join('')}
+      </div>`;
+  }
 
-function renderStrategy(strategy, results) {
-    const container = document.getElementById('strategyContainer');
-    
-    if (typeof strategy === 'string') {
-        try {
-            strategy = JSON.parse(strategy);
-        } catch(e) {
-            container.innerHTML = `<div class="empty-state">Lỗi parse Strategy: ${e.message}</div>`;
-            return;
-        }
-    }
-    
-    if (!strategy || strategy.executive_summary?.includes('Error') || strategy.executive_summary?.includes('error')) {
-        container.innerHTML = `
-            <div class="error-display">
-                <h3>⚠️ Chiến Lược Tổng Thể</h3>
-                <p>${strategy?.executive_summary || 'Không thể tạo phân tích Chiến lược'}</p>
-                <p style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
-                    Phân tích từng ngân hàng bên trái vẫn hợp lệ. Có thể retry để tạo Chiến lược tổng thể.
-                </p>
-            </div>
-        `;
-        return;
-    }
-    
-    const ranking = strategy.competitive_ranking || [];
-    const detailedAnalysis = strategy.detailed_competitor_analysis || [];
-    const recommendations = strategy.strategic_recommendations || {};
-    
-    let html = '';
-    
-    if (strategy.executive_summary) {
-        html += `
-            <div class="strategy-overview">
-                <h3>📋 Tóm Tắt Chiến Lược Tổng Thể</h3>
-                <p>${strategy.executive_summary}</p>
-            </div>
-        `;
-    }
-    
-    if (ranking.length > 0) {
-        html += `
-            <div class="ranking-table">
-                <div class="ranking-header">🏆 Bảng Xếp Hạng Cạnh Tranh</div>
-                ${ranking.map((r, i) => `
-                    <div class="ranking-item">
-                        <div class="rank-number rank-${i < 3 ? i + 1 : 'other'}">${r.rank || i + 1}</div>
-                        <div class="rank-info">
-                            <div class="rank-bank-name">${r.bank}</div>
-                            <div class="rank-position">${r.position} • ${r.key_strength || ''}</div>
-                            ${r.analysis ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${r.analysis}</div>` : ''}
-                        </div>
-                        <div class="rank-score">
-                            <div class="score-value">${r.score || '-'}</div>
-                            <div class="score-label">Điểm</div>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    }
-    
-    detailedAnalysis.forEach(comp => {
-        const scores = comp.competitive_score || {};
-        html += `
-            <div class="competitor-deep-dive">
-                <h3>🔍 Phân Tích Chi Tiết: ${comp.bank}</h3>
-                
-                <div class="strategy-section">
-                    <h4>Chiến Lược Sản Phẩm</h4>
-                    <p>${comp.product_strategy || 'Chưa có dữ liệu chi tiết'}</p>
-                </div>
-                
-                <div class="strategy-section">
-                    <h4>Chiến Lược Giá & Định Vị</h4>
-                    <p>${comp.pricing_strategy || 'Chưa có dữ liệu Chi tiết'}</p>
-                </div>
-                
-                <div class="strategy-section">
-                    <h4>Chiến Lược Phân Phối</h4>
-                    <p>${comp.distribution_strategy || 'Chưa có dữ liệu Chi tiết'}</p>
-                </div>
-                
-                <div class="strategy-section">
-                    <h4>Chiến Lược Chuyển Đổi Số</h4>
-                    <p>${comp.digital_strategy || 'Chưa có dữ liệu Chi tiết'}</p>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 16px;">
-                    <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
-                        <div style="font-size: 20px; font-weight: 700; color: #3b82f6;">${scores.product_breadth || '-'}/10</div>
-                        <div style="font-size: 10px; color: #64748b; text-transform: uppercase; margin-top: 4px;">Sản phẩm</div>
-                    </div>
-                    <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
-                        <div style="font-size: 20px; font-weight: 700; color: #8b5cf6;">${scores.digital_capability || '-'}/10</div>
-                        <div style="font-size: 10px; color: #64748b; text-transform: uppercase; margin-top: 4px;">Digital</div>
-                    </div>
-                    <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
-                        <div style="font-size: 20px; font-weight: 700; color: #10b981;">${scores.pricing_competitiveness || '-'}/10</div>
-                        <div style="font-size: 10px; color: #64748b; text-transform: uppercase; margin-top: 4px;">Giá cả</div>
-                    </div>
-                    <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
-                        <div style="font-size: 20px; font-weight: 700; color: #f59e0b;">${scores.brand_strength || '-'}/10</div>
-                        <div style="font-size: 10px; color: #64748b; text-transform: uppercase; margin-top: 4px;">Thương hiệu</div>
-                    </div>
-                    <div style="text-align: center; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
-                        <div style="font-size: 20px; font-weight: 700; color: #ef4444;">${scores.overall || '-'}/10</div>
-                        <div style="font-size: 10px; color: #64748b; text-transform: uppercase; margin-top: 4px;">Tổng</div>
-                    </div>
-                </div>
-                
-                ${(comp.key_threats || []).length > 0 ? `
-                    <div style="margin-top: 12px; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
-                        <span style="color: #ef4444; font-size: 12px; font-weight: 600;">⚠️ Mối đe dọa: </span>
-                        <span style="color: #cbd5e1; font-size: 12px;">${comp.key_threats.join(', ')}</span>
-                    </div>
-                ` : ''}
-                
-                ${(comp.key_opportunities || []).length > 0 ? `
-                    <div style="margin-top: 8px; padding: 10px; background: rgba(16, 185, 129, 0.1); border-radius: 8px;">
-                        <span style="color: #10b981; font-size: 12px; font-weight: 600;">💡 Cơ Hội: </span>
-                        <span style="color: #cbd5e1; font-size: 12px;">${comp.key_opportunities.join(', ')}</span>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    });
-    
-    if (strategy.product_comparison_matrix) {
-        const matrix = strategy.product_comparison_matrix;
-        html += `
-            <div class="competitor-deep-dive">
-                <h3 style="color: #8b5CF6;">📊 So Sánh Sản Phẩm Theo Hạng Mục</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    ${Object.entries(matrix).map(([category, data]) => `
-                        <div style="background: rgba(15, 23, 42, 0.6); padding: 14px; border-radius: 10px; border-left: 3px solid #8b5CF6;">
-                            <div style="font-size: 12px; color: #8b5CF6; text-transform: uppercase; margin-bottom: 6px;">${category}</div>
-                            <div style="font-weight: 600; color: #e2e8f0; margin-bottom: 4px;">Leader: ${data.leader || 'N/A'}</div>
-                            <div style="font-size: 12px; color: #94a3b8;">${data.gap_analysis || ''}</div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
-    
-    if (recommendations.overall_strategy) {
-        html += `
-            <div class="competitor-deep-dive" style="border: 1px solid rgba(16, 185, 129, 0.3);">
-                <h3 style="color: #10b981;">🎯 Chiến Lược Kinh Doanh Đề Xuất</h3>
-                
-                <div class="strategy-section">
-                    <h4>Chiến Lược Tổng Thể</h4>
-                    <p>${recommendations.overall_strategy}</p>
-                </div>
-                
-                ${recommendations.product_strategy ? `
-                    <div class="strategy-section">
-                        <h4>Chiến Lược Sản Phẩm</h4>
-                        <p>${recommendations.product_strategy}</p>
-                    </div>
-                ` : ''}
-                
-                ${recommendations.pricing_strategy ? `
-                    <div class="strategy-section">
-                        <h4>Chiến Lược Giá & Định Vị</h4>
-                        <p>${recommendations.pricing_strategy}</p>
-                    </div>
-                ` : ''}
-                
-                ${recommendations.distribution_strategy ? `
-                    <div class="strategy-section">
-                        <h4>Chiến Lược Phân Phối</h4>
-                        <p>${recommendations.distribution_strategy}</p>
-                    </div>
-                ` : ''}
-                
-                ${recommendations.digital_strategy ? `
-                    <div class="strategy-section">
-                        <h4>Chiến Lược Chuyển Đổi Số</h4>
-                        <p>${recommendations.digital_strategy}</p>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }
-    
-    if (recommendations.implementation_roadmap && recommendations.implementation_roadmap.length > 0) {
-        html += `
-            <div class="competitor-deep-dive">
-                <h3 style="color: #f59e0b;">📅 Lộ Trình Thực Thi Chiến Lược</h3>
-                <div class="roadmap-timeline">
-                    ${recommendations.implementation_roadmap.map(phase => `
-                        <div class="roadmap-phase">
-                            <h5>${phase.phase}</h5>
-                            <ul>
-                                ${(phase.actions || []).map(a => `<li>${a}</li>`).join('')}
-                            </ul>
-                            ${phase.milestones ? `<div style="margin-top: 8px; font-size: 12px; color: #10b981;">🎯 KPI: ${phase.milestones}</div>` : ''}
-                            ${phase.investment_required ? `<div style="margin-top: 4px; font-size: 12px; color: #f59e0b;">💰 Đầu tư: ${phase.investment_required}</div>` : ''}
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
-    
-    if (strategy.market_opportunities && strategy.market_opportunities.length > 0) {
-        html += `
-            <div class="competitor-deep-dive">
-                <h3 style="color: #ec4899;">💡 Cơ Hội Thị Trường Phát Hiện</h3>
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    ${strategy.market_opportunities.map(opp => `
-                        <div style="background: rgba(236, 72, 153, 0.1); padding: 16px; border-radius: 12px; border-left: 4px solid #ec4899;">
-                            <div style="font-weight: 600; color: #f472b6; margin-bottom: 6px;">${opp.opportunity}</div>
-                            <div style="font-size: 13px; color: #94a3b8; margin-bottom: 8px;">${opp.rationale}</div>
-                            <div style="display: flex; gap: 16px; font-size: 12px;">
-                                <span style="color: #64748b;">Doanh thu: <span style="color: #10b981; font-weight: 600;">${opp.potential_revenue || 'N/A'}</span></span>
-                                <span style="color: #64748b;">Độ khó: <span style="color: ${opp.difficulty === 'Dễ' ? '#10b981' : opp.difficulty === 'Khó' ? '#ef4444' : '#f59e0b'}; font-weight: 600;">${opp.difficulty || 'N/A'}</span></span>
-                                <span style="color: #64748b;">Ưu tiên: <span style="color: ${opp.priority === 'Cao' ? '#ef4444' : '#f59e0b'}; font-weight: 600;">${opp.priority || 'N/A'}</span></span>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
-    
-    if (strategy.risk_mitigation && strategy.risk_mitigation.length > 0) {
-        html += `
-            <div class="competitor-deep-dive" style="border: 1px solid rgba(239, 68, 68, 0.3);">
-                <h3 style="color: #ef4444;">⚠️ Rủi Ro & Giảm Thiểu</h3>
-                <ul style="margin-left: 20px; color: #cbd5e1; font-size: 14px; line-height: 1.8;">
-                    ${strategy.risk_mitigation.map(r => `<li>${r}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
+  detailed.forEach(comp => {
+    const sc = comp.competitive_score || {};
+    html += `
+      <div class="competitor-deep-dive">
+        <h3>🔍 ${comp.bank||'Ngân Hàng'}</h3>
+        ${[
+          ['Chiến Lược Sản Phẩm', comp.product_strategy],
+          ['Chiến Lược Giá', comp.pricing_strategy],
+          ['Phân Phối', comp.distribution_strategy],
+          ['Số Hóa', comp.digital_strategy]
+        ].filter(([,v])=>v).map(([label,val])=>`
+          <div class="strategy-section">
+            <h4>${label}</h4><p>${val}</p>
+          </div>`).join('')}
+
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:14px">
+          ${[
+            ['Sản phẩm','#3b82f6',sc.product_breadth],
+            ['Digital','#8b5cf6',sc.digital_capability],
+            ['Giá cả','#10b981',sc.pricing_competitiveness],
+            ['Brand','#f59e0b',sc.brand_strength],
+            ['Tổng','#ef4444',sc.overall]
+          ].map(([label,color,val])=>`
+            <div style="text-align:center;padding:10px;background:rgba(15,23,42,0.6);border-radius:7px">
+              <div style="font-size:18px;font-weight:700;color:${color}">${val||'-'}/10</div>
+              <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-top:3px">${label}</div>
+            </div>`).join('')}
+        </div>
+
+        ${(comp.key_threats||[]).length ? `
+          <div style="margin-top:10px;padding:9px;background:rgba(239,68,68,0.1);border-radius:7px;font-size:12px">
+            <span style="color:#ef4444;font-weight:600">⚠️ Đe dọa: </span>
+            <span style="color:#cbd5e1">${comp.key_threats.join(', ')}</span>
+          </div>` : ''}
+        ${(comp.key_opportunities||[]).length ? `
+          <div style="margin-top:7px;padding:9px;background:rgba(16,185,129,0.1);border-radius:7px;font-size:12px">
+            <span style="color:#10b981;font-weight:600">💡 Cơ hội: </span>
+            <span style="color:#cbd5e1">${comp.key_opportunities.join(', ')}</span>
+          </div>` : ''}
+      </div>`;
+  });
+
+  if (Object.keys(matrix).length) {
+    html += `
+      <div class="competitor-deep-dive">
+        <h3 style="color:#8b5cf6">📊 So Sánh Sản Phẩm</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          ${Object.entries(matrix).map(([cat, d]) => `
+            <div style="background:rgba(15,23,42,0.6);padding:12px;border-radius:9px;border-left:3px solid #8b5cf6">
+              <div style="font-size:11px;color:#8b5cf6;text-transform:uppercase;margin-bottom:5px">${cat}</div>
+              <div style="font-weight:600;color:#e2e8f0;font-size:13px">🥇 ${d.leader||'N/A'}</div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:3px">${d.gap_analysis||''}</div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  if (recs.overall_strategy) {
+    html += `
+      <div class="competitor-deep-dive" style="border:1px solid rgba(16,185,129,0.3)">
+        <h3 style="color:#10b981">🎯 Chiến Lược Đề Xuất</h3>
+        ${[
+          ['Tổng Thể', recs.overall_strategy],
+          ['Sản Phẩm', recs.product_strategy],
+          ['Giá & Định Vị', recs.pricing_strategy],
+          ['Phân Phối', recs.distribution_strategy],
+          ['Số Hóa', recs.digital_strategy]
+        ].filter(([,v])=>v).map(([label,val])=>`
+          <div class="strategy-section"><h4>${label}</h4><p>${val}</p></div>`).join('')}
+      </div>`;
+  }
+
+  if ((recs.implementation_roadmap||[]).length) {
+    html += `
+      <div class="competitor-deep-dive">
+        <h3 style="color:#f59e0b">📅 Lộ Trình Thực Thi</h3>
+        <div>
+          ${recs.implementation_roadmap.map(ph => `
+            <div class="roadmap-phase">
+              <h5>${ph.phase||''}</h5>
+              <ul>${(ph.actions||[]).map(a=>`<li>${a}</li>`).join('')}</ul>
+              ${ph.milestones ? `<div style="font-size:11px;color:#10b981;margin-top:6px">🎯 ${ph.milestones}</div>` : ''}
+              ${ph.investment_required ? `<div style="font-size:11px;color:#f59e0b">💰 ${ph.investment_required}</div>` : ''}
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  if (opps.length) {
+    html += `
+      <div class="competitor-deep-dive">
+        <h3 style="color:#ec4899">💡 Cơ Hội Thị Trường</h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${opps.map(o => `
+            <div style="background:rgba(236,72,153,0.1);padding:13px;border-radius:10px;border-left:4px solid #ec4899">
+              <div style="font-weight:600;color:#f472b6;margin-bottom:5px">${o.opportunity||''}</div>
+              <div style="font-size:12px;color:#94a3b8;margin-bottom:7px">${o.rationale||''}</div>
+              <div style="display:flex;gap:14px;font-size:11px">
+                <span style="color:#64748b">Doanh thu: <span style="color:#10b981;font-weight:600">${o.potential_revenue||'N/A'}</span></span>
+                <span style="color:#64748b">Độ khó: <span style="color:${o.difficulty==='Dễ'?'#10b981':o.difficulty==='Khó'?'#ef4444':'#f59e0b'};font-weight:600">${o.difficulty||'N/A'}</span></span>
+                <span style="color:#64748b">Ưu tiên: <span style="color:${o.priority==='Cao'?'#ef4444':'#f59e0b'};font-weight:600">${o.priority||'N/A'}</span></span>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  if (risks.length) {
+    html += `
+      <div class="competitor-deep-dive" style="border:1px solid rgba(239,68,68,0.3)">
+        <h3 style="color:#ef4444">⚠️ Rủi Ro &amp; Giảm Thiểu</h3>
+        <ul style="margin-left:18px;color:#cbd5e1;font-size:13px;line-height:1.9">
+          ${risks.map(r=>`<li>${r}</li>`).join('')}
+        </ul>
+      </div>`;
+  }
+
+  container.innerHTML = html;
 }
 </script>
-
 </body>
 </html>
