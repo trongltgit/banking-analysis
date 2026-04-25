@@ -1,179 +1,89 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
+import requests
+from bs4 import BeautifulSoup
 import time
-import logging
+import re
+import json
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-def crawl_with_selenium(url, max_retries=2):
-    """Crawl với Selenium để xử lý JavaScript"""
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+def crawl_website(url, max_retries=2):
+    """Crawl website với trích xuất dữ liệu có cấu trúc"""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "vi-VN,vi;q=0.9",
+    }
     
     for attempt in range(max_retries):
-        driver = None
         try:
-            driver = webdriver.Chrome(options=chrome_options)
-            driver.set_page_load_timeout(30)
+            res = requests.get(url, headers=headers, timeout=20, verify=False)
+            res.raise_for_status()
             
-            logger.info(f"🌐 Loading {url}...")
-            driver.get(url)
+            soup = BeautifulSoup(res.text, "html.parser")
             
-            # Chờ các phần tử quan trọng load
-            try:
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[class*='product'], [class*='service'], [class*='offering']"))
-                )
-            except:
-                logger.warning("⏱️ Timeout waiting for products, continuing anyway...")
+            # Xóa noise
+            for tag in soup(["script", "style", "nav", "footer", "form", "iframe"]):
+                tag.decompose()
             
-            # Scroll để load lazy-loaded content
-            for _ in range(5):
-                driver.execute_script("window.scrollBy(0, window.innerHeight);")
-                time.sleep(1)
+            # Trích xuất dữ liệu
+            structured = extract_structured_data(soup)
             
-            # Lấy HTML đầy đủ
-            html = driver.page_source
+            # Lấy text
+            text = soup.get_text(separator=" ", strip=True)
             
-            # Trích xuất dữ liệu có cấu trúc
-            extracted_data = extract_structured_data(driver, url)
-            
-            return html, extracted_data
+            # Kết hợp
+            full_text = f"""
+TITLE: {soup.title.get_text(strip=True) if soup.title else ''}
+PRODUCTS: {structured['products']}
+PROMOTIONS: {structured['promotions']}
+DIGITAL: {structured['digital']}
+RATES: {structured['rates']}
+CONTENT: {text[:7000]}
+"""
+            return full_text[:9000]
             
         except Exception as e:
-            logger.error(f"❌ Selenium error (attempt {attempt+1}): {str(e)}")
+            print(f"Attempt {attempt+1} failed: {str(e)}")
             if attempt < max_retries - 1:
-                time.sleep(3)
-            else:
-                return None, None
-        finally:
-            if driver:
-                driver.quit()
+                time.sleep(2)
     
-    return None, None
+    return None
 
-def extract_structured_data(driver, url):
-    """Trích xuất dữ liệu có cấu trúc từ trang"""
+def extract_structured_data(soup):
+    """Trích xuất dữ liệu có cấu trúc"""
     data = {
         "products": [],
         "promotions": [],
-        "digital_services": [],
-        "interest_rates": {},
-        "contact_info": {}
+        "digital": [],
+        "rates": []
     }
     
     try:
         # Tìm sản phẩm
-        product_selectors = [
-            "[class*='product']", "[class*='service']", "[class*='offering']",
-            "[data-product]", ".product-card", ".service-item"
-        ]
-        
-        for selector in product_selectors:
-            try:
-                elements = driver.find_elements(By.CSS_SELECTOR, selector)
-                for elem in elements[:20]:  # Giới hạn 20 sản phẩm
-                    try:
-                        name = elem.find_element(By.CSS_SELECTOR, "h2, h3, .name, .title").text
-                        description = elem.find_element(By.CSS_SELECTOR, "p, .description").text
-                        if name and name not in [p["name"] for p in data["products"]]:
-                            data["products"].append({
-                                "name": name,
-                                "description": description[:200],
-                                "category": categorize_product(name)
-                            })
-                    except:
-                        pass
-            except:
-                pass
+        for selector in ["[class*='product']", "[class*='service']", ".product-card", ".service-item", "h2", "h3"]:
+            for elem in soup.select(selector)[:20]:
+                try:
+                    text = elem.get_text(strip=True)
+                    if 10 < len(text) < 200 and text not in data["products"]:
+                        data["products"].append(text)
+                except:
+                    pass
         
         # Tìm khuyến mãi
-        promo_selectors = [
-            "[class*='promotion']", "[class*='offer']", "[class*='campaign']",
-            ".promo-banner", ".offer-card"
-        ]
-        
-        for selector in promo_selectors:
-            try:
-                elements = driver.find_elements(By.CSS_SELECTOR, selector)
-                for elem in elements[:10]:
-                    try:
-                        text = elem.text
-                        if text and len(text) > 10:
-                            data["promotions"].append(text[:150])
-                    except:
-                        pass
-            except:
-                pass
+        for selector in ["[class*='promo']", "[class*='offer']", "[class*='campaign']"]:
+            for elem in soup.select(selector)[:10]:
+                text = elem.get_text(strip=True)
+                if 15 < len(text) < 300:
+                    data["promotions"].append(text[:150])
         
         # Tìm dịch vụ digital
-        digital_keywords = ["app", "mobile", "online", "digital", "internet banking", "e-banking"]
-        all_text = driver.find_element(By.TAG_NAME, "body").text.lower()
-        
-        for keyword in digital_keywords:
-            if keyword in all_text:
-                data["digital_services"].append(keyword.title())
+        body_text = soup.get_text().lower()
+        digital_keywords = ["app", "mobile", "online", "digital", "internet banking", "e-banking", "chatbot"]
+        data["digital"] = [kw for kw in digital_keywords if kw in body_text]
         
         # Tìm lãi suất
-        rate_patterns = [
-            r"(\d+\.?\d*)\s*%\s*(lãi|suất|rate)",
-            r"lãi\s*suất\s*(\d+\.?\d*)\s*%"
-        ]
-        
-        import re
-        for pattern in rate_patterns:
-            matches = re.findall(pattern, all_text)
-            for match in matches[:5]:
-                if isinstance(match, tuple):
-                    data["interest_rates"][f"rate_{len(data['interest_rates'])}"] = f"{match[0]}%"
-                else:
-                    data["interest_rates"][f"rate_{len(data['interest_rates'])}"] = f"{match}%"
+        rates = re.findall(r'(\d+\.?\d*)\s*%', body_text)
+        data["rates"] = sorted(list(set(rates)))[:5]
         
     except Exception as e:
-        logger.error(f"Error extracting structured data: {e}")
+        print(f"Error extracting: {e}")
     
     return data
-
-def categorize_product(name):
-    """Phân loại sản phẩm"""
-    name_lower = name.lower()
-    
-    categories = {
-        "SAVINGS": ["tiết kiệm", "gửi", "deposit", "savings"],
-        "LOAN": ["vay", "cho vay", "loan", "credit"],
-        "CARD": ["thẻ", "card"],
-        "DIGITAL": ["app", "mobile", "online", "digital"],
-        "INSURANCE": ["bảo hiểm", "insurance"],
-        "INVESTMENT": ["đầu tư", "investment", "chứng chỉ"],
-    }
-    
-    for category, keywords in categories.items():
-        if any(kw in name_lower for kw in keywords):
-            return category
-    
-    return "OTHER"
-
-def crawl_website(url):
-    """Main crawl function"""
-    html, structured = crawl_with_selenium(url)
-    
-    if not html:
-        # Fallback to requests
-        import requests
-        from bs4 import BeautifulSoup
-        try:
-            res = requests.get(url, timeout=20, verify=False)
-            html = res.text
-            structured = None
-        except:
-            return None, None
-    
-    return html, structured
