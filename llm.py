@@ -4,157 +4,267 @@ import re
 import requests
 import time
 
-GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-def call_groq_api(prompt, model="llama-3.3-70b-versatile", max_tokens=1500, retries=3):
-    api_key = os.environ.get("GROQ_API_KEY_BK")
-    if not api_key:
-        raise Exception("GROQ_API_KEY_BK not set")
+ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+def call_ai_api(prompt, max_tokens=2000, retries=3):
+    """Gọi Anthropic Claude API"""
+    headers = {
+        "Content-Type": "application/json",
+        "anthropic-version": "2023-06-01"
+    }
 
     payload = {
-        "model": model,
+        "model": "claude-sonnet-4-20250514",
+        "max_tokens": max_tokens,
+        "system": (
+            "Bạn là chuyên gia phân tích ngân hàng Việt Nam với 15 năm kinh nghiệm. "
+            "Luôn trả về JSON hợp lệ, không có text nào bên ngoài JSON. "
+            "Tất cả keys dùng snake_case (ví dụ: bank_name, không phải Bank_Name)."
+        ),
         "messages": [
-            {"role": "system", "content": "Bạn là chuyên gia phân tích ngân hàng. Trả về JSON với key CHỮ HOA đầu từ (ví dụ: Executive_summary, Competitive_ranking)."},
             {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.2,
-        "max_tokens": max_tokens
+        ]
     }
 
     for attempt in range(retries):
         try:
-            res = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=70)
-            
-            if res.status_code == 429:
-                wait = 7 * (attempt + 1)
-                print(f"⏳ Rate limited, waiting {wait}s...")
+            res = requests.post(ANTHROPIC_API_URL, headers=headers, json=payload, timeout=90)
+
+            if res.status_code == 529 or res.status_code == 429:
+                wait = 10 * (attempt + 1)
+                print(f"⏳ API overloaded, waiting {wait}s...")
                 time.sleep(wait)
                 continue
-                
+
             res.raise_for_status()
-            content = res.json()["choices"][0]["message"]["content"]
-            
-            # Xử lý trường hợp AI trả về JSON nằm trong block ```json ... ```
-            if "```json" in content:
-                content = re.search(r"```json\n([\s\S]*?)\n```", content).group(1)
-            elif "```" in content:
-                content = re.search(r"```([\s\S]*?)```", content).group(1)
-                
-            return content.strip()
+            data = res.json()
 
-        except Exception as e:
+            # Lấy text từ response
+            content_blocks = data.get("content", [])
+            text = " ".join(
+                block.get("text", "") for block in content_blocks if block.get("type") == "text"
+            ).strip()
+
+            return text
+
+        except requests.exceptions.Timeout:
+            print(f"⚠️ Timeout attempt {attempt + 1}")
             if attempt < retries - 1:
-                time.sleep(3)
-                continue
-            raise
-    raise Exception("Groq API failed after retries")
+                time.sleep(5)
+        except Exception as e:
+            print(f"⚠️ API error attempt {attempt + 1}: {str(e)}")
+            if attempt < retries - 1:
+                time.sleep(5)
+            else:
+                raise
 
-def to_camel_case(obj):
-    """Chuyển đổi tất cả key trong dict từ snake_case sang Camel_Case"""
-    if isinstance(obj, dict):
-        return {convert_key(k): to_camel_case(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [to_camel_case(item) for item in obj]
-    else:
-        return obj
+    raise Exception("AI API failed after all retries")
 
-def convert_key(key):
-    """Chuyển snake_case sang Camel_Case"""
-    # Các key đặc biệt cần giữ nguyên hoặc xử lý riêng
-    special_keys = {
-        'url': 'url',
-        'extraction_quality': 'extraction_quality'
-    }
-    if key in special_keys:
-        return special_keys[key]
-    
-    # Chuyển đổi snake_case sang Camel_Case
-    parts = key.split('_')
-    return '_'.join([p.capitalize() for p in parts])
+
+# Alias cho backward compatibility
+def call_groq_api(prompt, model=None, max_tokens=1500, retries=3):
+    """Backward compat wrapper"""
+    return call_ai_api(prompt, max_tokens=max_tokens, retries=retries)
+
+
+def clean_json(text):
+    """Parse JSON từ response AI, xử lý nhiều format khác nhau"""
+    if not text:
+        return None
+
+    # Thử parse trực tiếp
+    try:
+        return json.loads(text)
+    except:
+        pass
+
+    # Tìm JSON trong ```json ... ```
+    match = re.search(r'```json\s*([\s\S]*?)\s*```', text, re.IGNORECASE)
+    if match:
+        try:
+            return json.loads(match.group(1))
+        except:
+            pass
+
+    # Tìm JSON trong ``` ... ```
+    match = re.search(r'```\s*([\s\S]*?)\s*```', text)
+    if match:
+        try:
+            return json.loads(match.group(1))
+        except:
+            pass
+
+    # Tìm object JSON đầu tiên
+    match = re.search(r'\{[\s\S]*\}', text)
+    if match:
+        try:
+            return json.loads(match.group())
+        except:
+            # Thử fix JSON bị cắt bởi max_tokens
+            raw = match.group()
+            # Đếm braces để tìm điểm kết thúc
+            depth = 0
+            end = 0
+            for i, ch in enumerate(raw):
+                if ch == '{':
+                    depth += 1
+                elif ch == '}':
+                    depth -= 1
+                    if depth == 0:
+                        end = i + 1
+                        break
+            if end:
+                try:
+                    return json.loads(raw[:end])
+                except:
+                    pass
+
+    return None
+
 
 def analyze_strategy(results):
+    """Tạo phân tích chiến lược tổng thể từ kết quả các ngân hàng"""
     if not results:
         return {
-            "Executive_summary": "Không có dữ liệu đầu vào để phân tích chiến lược.",
-            "Competitive_ranking": [],
-            "Strategic_recommendations": {"Overall_strategy": "N/A", "Immediate_actions": []}
+            "executive_summary": "Không có dữ liệu để phân tích.",
+            "competitive_ranking": [],
+            "strategic_recommendations": {"overall_strategy": "N/A"}
         }
 
-    # Rút gọn dữ liệu để gửi cho AI
+    # Tóm tắt dữ liệu cho AI
     summary = []
     for r in results:
         a = r.get("analysis", {})
+        strategic = a.get("strategic_analysis", {})
+        competitive = a.get("competitive_assessment", {})
         summary.append({
             "bank": a.get("bank_name", "Unknown"),
-            "products": len(a.get("products", [])),
-            "position": a.get("strategic_analysis", {}).get("positioning", "")[:60],
-            "strengths": a.get("competitive_assessment", {}).get("strengths", [])[:2]
+            "code": a.get("bank_code", ""),
+            "product_count": len(a.get("products", [])),
+            "digital_count": len(a.get("digital_capabilities", [])),
+            "positioning": strategic.get("positioning", "")[:100],
+            "strengths": competitive.get("strengths", [])[:3],
+            "weaknesses": competitive.get("weaknesses", [])[:2],
+            "market_position": competitive.get("market_position", ""),
+            "threat_level": competitive.get("competitive_threat_level", ""),
+            "interest_rates": a.get("interest_rates", {})
         })
 
-    prompt = f"""Phân tích các ngân hàng sau và đưa ra chiến lược cạnh tranh:
+    prompt = f"""Phân tích cạnh tranh và chiến lược cho các ngân hàng Việt Nam sau:
 
 {json.dumps(summary, ensure_ascii=False, indent=2)}
 
-Trả về DUY NHẤT một JSON object với key CHỮ HOA theo cấu trúc:
+Trả về DUY NHẤT một JSON object (không có text nào khác) với cấu trúc:
 {{
-  "Executive_summary": "Tóm tắt chiến lược tổng quan...",
-  "Competitive_ranking": [
-    {{"Rank": 1, "Bank": "Tên ngân hàng", "Position": "Vị thế", "Score": "8.5", "Key_strength": "Điểm mạnh chính", "Analysis": "Phân tích ngắn"}}
+  "executive_summary": "Tóm tắt toàn cảnh thị trường ngân hàng Việt Nam và vị thế các ngân hàng...",
+  "competitive_ranking": [
+    {{
+      "rank": 1,
+      "bank": "Tên ngân hàng",
+      "position": "Vị thế thị trường",
+      "score": "8.5",
+      "key_strength": "Điểm mạnh cốt lõi",
+      "analysis": "Phân tích ngắn 1-2 câu"
+    }}
   ],
-  "Detailed_competitor_analysis": [
-    {{"Bank": "Tên", "Product_strategy": "...", "Pricing_strategy": "...", "Distribution_strategy": "...", "Digital_strategy": "...", 
-      "Competitive_score": {{"Product_breadth": 8, "Digital_capability": 7, "Pricing_competitiveness": 8, "Brand_strength": 9, "Overall": 8}},
-      "Key_threats": ["..."], "Key_opportunities": ["..."]}}
+  "detailed_competitor_analysis": [
+    {{
+      "bank": "Tên ngân hàng",
+      "product_strategy": "Chiến lược sản phẩm chi tiết",
+      "pricing_strategy": "Chiến lược giá và định vị",
+      "distribution_strategy": "Chiến lược phân phối kênh",
+      "digital_strategy": "Chiến lược số hóa",
+      "competitive_score": {{
+        "product_breadth": 8,
+        "digital_capability": 7,
+        "pricing_competitiveness": 8,
+        "brand_strength": 9,
+        "overall": 8
+      }},
+      "key_threats": ["Mối đe dọa 1", "mối đe dọa 2"],
+      "key_opportunities": ["Cơ hội 1", "cơ hội 2"]
+    }}
   ],
-  "Product_comparison_matrix": {{"Savings": {{"Leader": "Bank A", "Gap_analysis": "..."}},
-  "Strategic_recommendations": {{
-    "Overall_strategy": "...",
-    "Product_strategy": "...",
-    "Pricing_strategy": "...",
-    "Distribution_strategy": "...",
-    "Digital_strategy": "...",
-    "Implementation_roadmap": [
-      {{"Phase": "Giai đoạn 1", "Actions": ["Hành động 1", "Hành động 2"], "Milestones": "KPI", "Investment_required": "Chi phí"}}
+  "product_comparison_matrix": {{
+    "Tiết kiệm": {{"leader": "Tên ngân hàng dẫn đầu", "gap_analysis": "Phân tích khoảng cách"}},
+    "Cho vay": {{"leader": "Tên ngân hàng", "gap_analysis": "Phân tích"}},
+    "Thẻ": {{"leader": "Tên ngân hàng", "gap_analysis": "Phân tích"}},
+    "Ngân hàng số": {{"leader": "Tên ngân hàng", "gap_analysis": "Phân tích"}}
+  }},
+  "strategic_recommendations": {{
+    "overall_strategy": "Chiến lược tổng thể để cạnh tranh hiệu quả",
+    "product_strategy": "Gợi ý phát triển sản phẩm",
+    "pricing_strategy": "Chiến lược giá đề xuất",
+    "distribution_strategy": "Chiến lược kênh phân phối",
+    "digital_strategy": "Ưu tiên số hóa",
+    "implementation_roadmap": [
+      {{
+        "phase": "Giai đoạn 1 (Q1-Q2 2025)",
+        "actions": ["Hành động 1", "Hành động 2", "Hành động 3"],
+        "milestones": "KPI đo lường",
+        "investment_required": "Mức đầu tư ước tính"
+      }},
+      {{
+        "phase": "Giai đoạn 2 (Q3-Q4 2025)",
+        "actions": ["Hành động 1", "Hành động 2"],
+        "milestones": "KPI",
+        "investment_required": "Mức đầu tư"
+      }}
     ]
   }},
-  "Market_opportunities": [
-    {{"Opportunity": "Cơ hội", "Rationale": "Lý do", "Potential_revenue": "Doanh thu", "Difficulty": "Trung bình", "Priority": "Cao"}}
+  "market_opportunities": [
+    {{
+      "opportunity": "Tên cơ hội thị trường",
+      "rationale": "Lý do và bằng chứng",
+      "potential_revenue": "Tiềm năng doanh thu",
+      "difficulty": "Dễ/Trung bình/Khó",
+      "priority": "Cao/Trung bình/Thấp"
+    }}
   ],
-  "Risk_mitigation": ["Rủi ro 1", "Rủi ro 2"]
-}}
-
-Lưu ý: Tất cả key phải CHỮ HOA đầu từ (Executive_summary, không phải executive_summary)."""
+  "risk_mitigation": [
+    "Rủi ro 1 và cách giảm thiểu",
+    "Rủi ro 2 và cách giảm thiểu",
+    "Rủi ro 3 và cách giảm thiểu"
+  ]
+}}"""
 
     try:
-        content = call_groq_api(prompt, max_tokens=2000, retries=2)
-        
-        # Parse JSON từ AI
-        try:
-            strategy = json.loads(content)
-        except json.JSONDecodeError:
-            # Thử tìm JSON trong text
-            match = re.search(r'\{[\s\S]*\}', content)
-            if match:
-                strategy = json.loads(match.group())
-            else:
-                raise
-        
-        # Chuyển đổi key sang chữ hoa nếu AI trả về chữ thường
-        strategy = to_camel_case(strategy)
-        
-        return strategy
-        
+        content = call_ai_api(prompt, max_tokens=3000, retries=2)
+        strategy = clean_json(content)
+
+        if not strategy:
+            raise Exception("Cannot parse strategy JSON")
+
+        # Đảm bảo keys snake_case nhất quán
+        return normalize_keys(strategy)
+
     except Exception as e:
-        print(f"❌ Strategy parse error: {str(e)}")
-        # Fallback
+        print(f"❌ Strategy analysis failed: {str(e)}")
         return {
-            "Executive_summary": "Có lỗi khi tổng hợp chiến lược bằng AI.",
-            "Competitive_ranking": [{"Rank": 1, "Bank": r.get("bank", "Bank"), "Position": "N/A", "Score": "N/A"} for r in summary],
-            "Strategic_recommendations": {
-                "Overall_strategy": "Vui lòng kiểm tra dữ liệu chi tiết của từng ngân hàng.",
-                "Product_strategy": "Cần xem xét thủ công.",
-                "Immediate_actions": ["Tải lại trang hoặc thử lại sau"]
+            "executive_summary": f"Lỗi khi phân tích chiến lược: {str(e)}. Vui lòng xem chi tiết từng ngân hàng bên trái.",
+            "competitive_ranking": [
+                {"rank": i+1, "bank": r.get("bank", ""), "position": r.get("market_position", "N/A"),
+                 "score": "N/A", "key_strength": "", "analysis": ""}
+                for i, r in enumerate(summary)
+            ],
+            "strategic_recommendations": {
+                "overall_strategy": "Vui lòng thử lại để nhận phân tích chiến lược đầy đủ.",
             }
         }
+
+
+def normalize_keys(obj):
+    """Đảm bảo tất cả keys dùng snake_case nhất quán"""
+    if isinstance(obj, dict):
+        new_obj = {}
+        for k, v in obj.items():
+            # Chuyển CamelCase và Camel_Case về snake_case
+            new_key = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', '_', k).lower()
+            new_key = new_key.replace(' ', '_')
+            new_obj[new_key] = normalize_keys(v)
+        return new_obj
+    elif isinstance(obj, list):
+        return [normalize_keys(item) for item in obj]
+    return obj
