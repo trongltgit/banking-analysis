@@ -3,306 +3,724 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Banking Deep Intelligence</title>
+<title>Deep Intelligence — Product & Strategy Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
+:root {
+  --bg: #05070f;
+  --bg2: #0a0d1a;
+  --bg3: #0f1423;
+  --surface: #131929;
+  --surface2: #1a2235;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --accent: #00e5ff;
+  --accent2: #7c3aed;
+  --accent3: #10b981;
+  --accent4: #f59e0b;
+  --danger: #ef4444;
+  --text: #e8edf5;
+  --text2: #8896ab;
+  --text3: #4a5568;
+  --font-head: 'Syne', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  --font-body: 'Inter', sans-serif;
+  --radius: 12px;
+  --glow: 0 0 30px rgba(0,229,255,0.12);
+}
 * { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 body {
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
-  color: #e2e8f0; min-height: 100vh;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
 }
-.header {
-  background: linear-gradient(90deg, #0d4a3a 0%, #0a7c5c 100%);
-  padding: 20px 30px;
-  box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+
+/* NOISE OVERLAY */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0;
 }
-.header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
-.header .subtitle { font-size: 14px; opacity: 0.9; margin-top: 6px; }
-.main-container { display: flex; height: calc(100vh - 82px); overflow: hidden; }
-.left-panel {
-  width: 45%; background: rgba(15,23,42,0.95);
-  padding: 20px; overflow-y: auto;
-  border-right: 1px solid rgba(255,255,255,0.08);
+
+/* TOPBAR */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 58px;
+  background: rgba(5,7,15,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 28px; gap: 16px;
 }
-.right-panel {
-  width: 55%; padding: 20px;
-  overflow-y: auto; background: rgba(10,14,39,0.8);
+.logo {
+  font-family: var(--font-head);
+  font-weight: 800; font-size: 15px; letter-spacing: -0.3px;
+  color: var(--text);
 }
-.input-section {
-  background: rgba(30,41,59,0.8); padding: 18px;
-  border-radius: 16px; margin-bottom: 20px;
-  border: 1px solid rgba(255,255,255,0.1);
+.logo span { color: var(--accent); }
+.topbar-tag {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text3); letter-spacing: 1px; text-transform: uppercase;
+  background: var(--surface); padding: 3px 8px; border-radius: 4px;
+  border: 1px solid var(--border);
 }
-.input-section h3 {
-  font-size: 12px; text-transform: uppercase;
-  color: #64748b; margin-bottom: 12px; letter-spacing: 0.5px;
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent3);
+  box-shadow: 0 0 8px var(--accent3);
+  animation: pulse 2s infinite;
 }
-.tab-buttons { display: flex; gap: 10px; margin-bottom: 14px; }
-.tab-btn {
-  flex: 1; padding: 9px; border: none;
-  border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.status-text { font-size: 11px; color: var(--text2); font-family: var(--font-mono); }
+
+/* LAYOUT */
+.layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  grid-template-rows: 1fr;
+  height: calc(100vh - 58px);
+  margin-top: 58px;
+  overflow: hidden;
 }
-.tab-btn.active {
-  background: linear-gradient(90deg, #059669, #10b981); color: white;
+.sidebar {
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 16px;
 }
-.tab-btn:not(.active) {
-  background: rgba(30,41,59,0.6); color: #94a3b8;
+.main-area {
+  overflow-y: auto;
+  padding: 24px 28px;
+  background: var(--bg);
 }
-.tab-btn:hover:not(.active) { background: rgba(59,130,246,0.3); }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 4px; }
+
+/* INPUT PANEL */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.panel-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.panel-head-label {
+  font-family: var(--font-mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text3);
+}
+.panel-body { padding: 16px; }
+
+/* TABS */
+.tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.tab {
+  flex: 1; padding: 8px 10px;
+  font-family: var(--font-body); font-size: 12px; font-weight: 500;
+  border: 1px solid var(--border); border-radius: 8px;
+  cursor: pointer; transition: all 0.2s;
+  background: transparent; color: var(--text2);
+}
+.tab.active {
+  background: rgba(0,229,255,0.1);
+  border-color: rgba(0,229,255,0.3);
+  color: var(--accent);
+}
+.tab:hover:not(.active) { border-color: var(--border2); color: var(--text); }
+
 textarea {
-  width: 100%; height: 110px; padding: 12px;
-  border-radius: 10px; border: 2px solid rgba(255,255,255,0.1);
-  background: rgba(15,23,42,0.6); color: #e2e8f0;
-  font-size: 13px; resize: vertical; font-family: 'Courier New', monospace;
+  width: 100%;
+  height: 100px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--font-mono); font-size: 12px;
+  padding: 10px 12px;
+  resize: vertical; line-height: 1.7;
 }
-textarea:focus { outline: none; border-color: #10b981; }
-.btn-primary {
-  width: 100%; padding: 13px; margin-top: 10px;
-  background: linear-gradient(90deg, #059669, #10b981);
-  color: white; border: none; border-radius: 10px;
-  font-weight: 700; cursor: pointer; font-size: 15px; transition: all 0.3s;
+textarea:focus { outline: none; border-color: rgba(0,229,255,0.4); }
+textarea::placeholder { color: var(--text3); }
+
+.hint {
+  font-size: 11px; color: var(--text3); margin-top: 8px; line-height: 1.6;
 }
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px); box-shadow: 0 8px 25px rgba(16,185,129,0.4);
+
+.btn-run {
+  width: 100%; margin-top: 12px;
+  padding: 12px;
+  background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(124,58,237,0.15));
+  border: 1px solid rgba(0,229,255,0.3);
+  border-radius: 10px;
+  color: var(--accent);
+  font-family: var(--font-head); font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: all 0.2s; letter-spacing: 0.3px;
 }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-.spinner {
-  display: inline-block; width: 16px; height: 16px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: white; border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-right: 6px; vertical-align: middle;
+.btn-run:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(0,229,255,0.25), rgba(124,58,237,0.25));
+  box-shadow: 0 0 20px rgba(0,229,255,0.2);
+  transform: translateY(-1px);
+}
+.btn-run:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+/* SPINNER */
+.spin {
+  display: inline-block; width: 13px; height: 13px;
+  border: 2px solid rgba(0,229,255,0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.7s linear infinite;
+  vertical-align: middle; margin-right: 6px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Bank card */
-.bank-detail-card {
-  background: rgba(30,41,59,0.6); border-radius: 14px;
-  padding: 20px; margin-bottom: 18px;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-left: 4px solid #10b981;
+/* FILE UPLOAD */
+.file-zone {
+  border: 2px dashed var(--border);
+  border-radius: 8px; padding: 16px; text-align: center;
+  cursor: pointer; transition: border-color 0.2s;
 }
-.bank-header {
-  display: flex; justify-content: space-between;
-  align-items: flex-start; margin-bottom: 16px;
-  padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-.bank-title { font-size: 19px; font-weight: 700; color: #10b981; }
-.bank-code {
-  font-size: 11px; color: #64748b;
-  background: rgba(100,116,139,0.2);
-  padding: 3px 8px; border-radius: 12px; margin-top: 4px; display: inline-block;
-}
-.source-badge {
-  font-size: 10px; padding: 2px 7px; border-radius: 10px;
-  margin-top: 4px; margin-left: 6px; display: inline-block;
-}
-.source-live { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
-.source-kb { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
-.quality-badge {
-  padding: 5px 10px; border-radius: 16px;
-  font-size: 10px; font-weight: 600; text-transform: uppercase;
-}
-.quality-deep { background: rgba(16,185,129,0.2); color: #10b981; }
-.quality-good { background: rgba(59,130,246,0.2); color: #3b82f6; }
-.quality-limited { background: rgba(245,158,11,0.2); color: #f59e0b; }
-.quality-error { background: rgba(239,68,68,0.2); color: #ef4444; }
-.section-title {
-  font-size: 11px; text-transform: uppercase; color: #94a3b8;
-  letter-spacing: 0.5px; margin: 16px 0 10px 0; font-weight: 600;
-}
-.product-list { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
-.product-tag {
-  padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 500;
-}
-.tag-savings { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
-.tag-loan { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
-.tag-card { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
-.tag-digital { background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); }
-.tag-insurance { background: rgba(236,72,153,0.15); color: #f472b6; border: 1px solid rgba(236,72,153,0.3); }
-.tag-investment { background: rgba(14,165,233,0.15); color: #38bdf8; border: 1px solid rgba(14,165,233,0.3); }
-.tag-other { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
-.strategic-box {
-  background: rgba(15,23,42,0.8); padding: 13px;
-  border-radius: 10px; margin-bottom: 10px;
-}
-.strategic-box h4 { font-size: 12px; color: #10b981; margin-bottom: 6px; font-weight: 600; }
-.strategic-box p, .strategic-box li { font-size: 13px; line-height: 1.7; color: #cbd5e1; }
-.strategic-box ul { margin-left: 14px; }
-.strategic-box li { margin-bottom: 3px; }
-.metric-row { display: flex; gap: 12px; margin-top: 12px; }
-.metric-item {
-  flex: 1; background: rgba(15,23,42,0.6);
-  padding: 10px; border-radius: 8px; text-align: center;
-}
-.metric-value { font-size: 22px; font-weight: 700; color: #10b981; }
-.metric-label { font-size: 10px; color: #64748b; text-transform: uppercase; margin-top: 3px; }
+.file-zone:hover { border-color: rgba(0,229,255,0.3); }
+.file-zone input { display: none; }
+.file-zone-label { font-size: 12px; color: var(--text2); }
+.file-zone-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
 
-/* Right panel */
-.panel-header {
-  font-size: 17px; font-weight: 700; color: #f8fafc;
-  margin-bottom: 18px; padding-bottom: 10px;
-  border-bottom: 2px solid rgba(16,185,129,0.3);
+/* ENTITY CARDS (sidebar results) */
+.entity-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.2s;
 }
-.strategy-overview {
-  background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.05));
-  border: 1px solid rgba(16,185,129,0.2);
-  border-radius: 14px; padding: 20px; margin-bottom: 20px;
+.entity-card:hover { border-color: var(--border2); }
+.entity-card.error { border-left: 3px solid var(--danger); }
+.entity-card.quality-deep { border-left: 3px solid var(--accent3); }
+.entity-card.quality-good { border-left: 3px solid var(--accent); }
+.entity-card.quality-limited { border-left: 3px solid var(--accent4); }
+
+.ec-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; gap: 12px;
 }
-.strategy-overview h3 {
-  font-size: 13px; color: #10b981; text-transform: uppercase;
-  letter-spacing: 0.5px; margin-bottom: 10px;
+.ec-icon {
+  width: 38px; height: 38px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+  background: var(--bg3);
 }
-.strategy-overview p { font-size: 14px; line-height: 1.8; color: #e2e8f0; }
-.ranking-table {
-  background: rgba(30,41,59,0.6); border-radius: 14px;
-  overflow: hidden; margin-bottom: 20px;
-  border: 1px solid rgba(255,255,255,0.08);
+.ec-name {
+  font-family: var(--font-head); font-size: 15px; font-weight: 700;
+  color: var(--text); line-height: 1.2;
 }
-.ranking-header {
-  background: rgba(16,185,129,0.2); padding: 14px 18px;
-  font-size: 13px; font-weight: 600; color: #10b981;
+.ec-meta { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+.ec-badge {
+  font-family: var(--font-mono); font-size: 9px;
+  padding: 2px 6px; border-radius: 4px;
   text-transform: uppercase; letter-spacing: 0.5px;
 }
-.ranking-item {
-  display: flex; align-items: center;
-  padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.05);
+.badge-code { background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+.badge-type-bank { background: rgba(0,229,255,0.1); color: var(--accent); border: 1px solid rgba(0,229,255,0.2); }
+.badge-type-company { background: rgba(124,58,237,0.1); color: #a78bfa; border: 1px solid rgba(124,58,237,0.2); }
+.badge-type-fintech { background: rgba(16,185,129,0.1); color: var(--accent3); border: 1px solid rgba(16,185,129,0.2); }
+.badge-type-insurance { background: rgba(245,158,11,0.1); color: var(--accent4); border: 1px solid rgba(245,158,11,0.2); }
+.badge-src-live { background: rgba(16,185,129,0.1); color: var(--accent3); border: 1px solid rgba(16,185,129,0.25); }
+.badge-src-upload { background: rgba(124,58,237,0.1); color: #a78bfa; border: 1px solid rgba(124,58,237,0.25); }
+.badge-src-error { background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.25); }
+.badge-quality-deep { background: rgba(16,185,129,0.12); color: var(--accent3); }
+.badge-quality-good { background: rgba(0,229,255,0.1); color: var(--accent); }
+.badge-quality-limited { background: rgba(245,158,11,0.1); color: var(--accent4); }
+.badge-quality-error { background: rgba(239,68,68,0.1); color: var(--danger); }
+.ec-quality { margin-left: auto; flex-shrink: 0; }
+
+.ec-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+
+.ec-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ec-metric {
+  background: var(--bg3); border-radius: 8px; padding: 9px 10px; text-align: center;
 }
-.rank-number {
-  width: 34px; height: 34px; border-radius: 50%;
+.ec-metric-val {
+  font-family: var(--font-mono); font-size: 20px; font-weight: 500;
+  color: var(--accent);
+}
+.ec-metric-lbl { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+.ec-section-title {
+  font-family: var(--font-mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text3);
+  margin-bottom: 7px;
+}
+
+/* Product tags */
+.tag-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag {
+  font-size: 11px; padding: 4px 9px; border-radius: 5px;
+  font-weight: 500; cursor: default;
+}
+.tag-SAVINGS { background: rgba(16,185,129,0.1); color: #34d399; border: 1px solid rgba(16,185,129,0.2); }
+.tag-LOAN { background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
+.tag-CARD { background: rgba(245,158,11,0.1); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
+.tag-DIGITAL { background: rgba(139,92,246,0.1); color: #a78bfa; border: 1px solid rgba(139,92,246,0.2); }
+.tag-INSURANCE { background: rgba(236,72,153,0.1); color: #f472b6; border: 1px solid rgba(236,72,153,0.2); }
+.tag-INVESTMENT { background: rgba(14,165,233,0.1); color: #38bdf8; border: 1px solid rgba(14,165,233,0.2); }
+.tag-PAYMENT { background: rgba(0,229,255,0.1); color: var(--accent); border: 1px solid rgba(0,229,255,0.2); }
+.tag-BUSINESS { background: rgba(99,102,241,0.1); color: #818cf8; border: 1px solid rgba(99,102,241,0.2); }
+.tag-LIFE { background: rgba(251,146,60,0.1); color: #fb923c; border: 1px solid rgba(251,146,60,0.2); }
+.tag-HEALTH { background: rgba(52,211,153,0.1); color: #34d399; border: 1px solid rgba(52,211,153,0.2); }
+.tag-PRODUCT { background: rgba(0,229,255,0.1); color: var(--accent); border: 1px solid rgba(0,229,255,0.2); }
+.tag-SERVICE { background: rgba(167,139,250,0.1); color: #a78bfa; border: 1px solid rgba(167,139,250,0.2); }
+.tag-OTHER { background: rgba(100,116,139,0.1); color: #94a3b8; border: 1px solid rgba(100,116,139,0.2); }
+
+/* SWOT mini */
+.swot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.swot-box { background: var(--bg3); border-radius: 7px; padding: 9px 10px; }
+.swot-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; font-family: var(--font-mono); }
+.swot-label.s { color: var(--accent3); }
+.swot-label.w { color: var(--danger); }
+.swot-item { font-size: 11px; color: var(--text2); line-height: 1.6; padding-left: 10px; position: relative; }
+.swot-item::before { content: '—'; position: absolute; left: 0; color: var(--text3); }
+
+/* Positioning text */
+.positioning-text {
+  font-size: 12px; color: var(--text2); line-height: 1.7;
+  background: var(--bg3); border-radius: 7px; padding: 10px 12px;
+  border-left: 2px solid rgba(0,229,255,0.3);
+}
+
+/* Threat badge */
+.threat-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; padding: 4px 10px; border-radius: 20px;
+}
+.threat-High { background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+.threat-Medium { background: rgba(245,158,11,0.1); color: var(--accent4); border: 1px solid rgba(245,158,11,0.2); }
+.threat-Low { background: rgba(16,185,129,0.1); color: var(--accent3); border: 1px solid rgba(16,185,129,0.2); }
+
+/* Data confidence */
+.confidence-bar { height: 3px; background: var(--bg3); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.confidence-fill { height: 100%; border-radius: 2px; transition: width 0.8s ease; }
+.conf-high .confidence-fill { background: var(--accent3); }
+.conf-medium .confidence-fill { background: var(--accent4); }
+.conf-low .confidence-fill { background: var(--danger); }
+
+/* ============ MAIN AREA ============ */
+.section-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+}
+.section-header h2 {
+  font-family: var(--font-head); font-size: 19px; font-weight: 700;
+  color: var(--text);
+}
+.section-line {
+  flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--border2), transparent);
+}
+
+/* SUMMARY CARD */
+.summary-card {
+  background: linear-gradient(135deg, rgba(0,229,255,0.06) 0%, rgba(124,58,237,0.04) 100%);
+  border: 1px solid rgba(0,229,255,0.15);
+  border-radius: var(--radius); padding: 20px;
+  margin-bottom: 24px; position: relative; overflow: hidden;
+}
+.summary-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.5;
+}
+.summary-label {
+  font-family: var(--font-mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent);
+  margin-bottom: 10px;
+}
+.summary-text { font-size: 14px; line-height: 1.8; color: var(--text2); }
+
+/* STATS ROW */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.stat-val {
+  font-family: var(--font-mono); font-size: 26px; font-weight: 500;
+  color: var(--text); line-height: 1;
+}
+.stat-val.cyan { color: var(--accent); }
+.stat-val.green { color: var(--accent3); }
+.stat-val.purple { color: #a78bfa; }
+.stat-val.amber { color: var(--accent4); }
+.stat-lbl { font-size: 11px; color: var(--text3); }
+
+/* RANKING TABLE */
+.rank-table {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; margin-bottom: 24px;
+}
+.rank-table-head {
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.rank-table-head span {
+  font-family: var(--font-mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text3);
+}
+.rank-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto auto;
+  align-items: center; gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+.rank-row:last-child { border-bottom: none; }
+.rank-row:hover { background: rgba(255,255,255,0.02); }
+.rank-num {
+  width: 36px; height: 36px; border-radius: 9px;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 15px; margin-right: 14px;
+  font-family: var(--font-mono); font-size: 14px; font-weight: 500;
 }
-.rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1f3a; }
-.rank-2 { background: linear-gradient(135deg, #94a3b8, #64748b); color: #1a1f3a; }
-.rank-3 { background: linear-gradient(135deg, #cd7f32, #b45309); color: white; }
-.rank-other { background: rgba(100,116,139,0.3); color: #94a3b8; }
-.rank-info { flex: 1; }
-.rank-bank-name { font-size: 15px; font-weight: 600; color: #f1f5f9; }
-.rank-position { font-size: 11px; color: #64748b; margin-top: 2px; }
-.rank-score { text-align: right; }
-.score-value { font-size: 19px; font-weight: 700; color: #10b981; }
-.score-label { font-size: 10px; color: #64748b; text-transform: uppercase; }
-.competitor-deep-dive {
-  background: rgba(30,41,59,0.6); border-radius: 14px;
-  padding: 20px; margin-bottom: 18px;
-  border: 1px solid rgba(255,255,255,0.08);
+.rn-1 { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
+.rn-2 { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+.rn-3 { background: rgba(180,83,9,0.15); color: #b45309; border: 1px solid rgba(180,83,9,0.25); }
+.rn-other { background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+.rank-name { font-family: var(--font-head); font-size: 14px; font-weight: 600; color: var(--text); }
+.rank-sub { font-size: 11px; color: var(--text3); margin-top: 2px; line-height: 1.4; }
+.rank-score-wrap { text-align: right; }
+.rank-score { font-family: var(--font-mono); font-size: 22px; font-weight: 500; color: var(--accent3); }
+.rank-score-lbl { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+.rank-bar-wrap { width: 80px; }
+.rank-bar { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+.rank-bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--accent3), var(--accent)); }
+
+/* CHARTS GRID */
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.chart-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px;
 }
-.competitor-deep-dive h3 {
-  font-size: 15px; color: #3b82f6; margin-bottom: 14px;
-  padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);
+.chart-title {
+  font-family: var(--font-mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text3);
+  margin-bottom: 14px;
 }
-.strategy-section { margin-bottom: 16px; }
-.strategy-section h4 {
-  font-size: 12px; color: #10b981; text-transform: uppercase;
-  letter-spacing: 0.5px; margin-bottom: 8px;
+.chart-wrap { position: relative; height: 200px; }
+
+/* COMPETITOR DEEP DIVE */
+.comp-grid { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+.comp-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
 }
-.strategy-section p {
-  font-size: 13px; line-height: 1.7; color: #cbd5e1;
-  background: rgba(15,23,42,0.4); padding: 10px; border-radius: 7px;
+.comp-card-head {
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
 }
-.roadmap-phase {
-  background: rgba(15,23,42,0.6); border-left: 4px solid #10b981;
-  padding: 14px; border-radius: 0 10px 10px 0; margin-bottom: 12px;
+.comp-card-name { font-family: var(--font-head); font-size: 15px; font-weight: 700; color: var(--accent); }
+.comp-card-body { padding: 18px; }
+.comp-strategies { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.strat-item { background: var(--bg3); border-radius: 8px; padding: 12px; }
+.strat-label {
+  font-family: var(--font-mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: 0.8px; color: var(--accent);
+  margin-bottom: 6px;
 }
-.roadmap-phase h5 { font-size: 13px; color: #10b981; margin-bottom: 8px; }
-.roadmap-phase ul { margin-left: 14px; font-size: 12px; color: #94a3b8; line-height: 1.8; }
-.empty-state { text-align: center; padding: 50px 20px; color: #64748b; }
-.error-display {
-  background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
-  padding: 16px; border-radius: 10px; margin-bottom: 16px;
+.strat-text { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+/* SCORE BARS */
+.score-bars { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.score-bar-row { display: flex; align-items: center; gap: 10px; }
+.score-bar-label { font-size: 11px; color: var(--text2); width: 130px; flex-shrink: 0; }
+.score-bar-track { flex: 1; height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+.score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.9s cubic-bezier(0.4,0,0.2,1); }
+.score-bar-val { font-family: var(--font-mono); font-size: 11px; color: var(--text); width: 30px; text-align: right; }
+
+/* MATRIX */
+.matrix-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; }
+.matrix-cell {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px;
 }
-.error-display h3 { color: #ef4444; margin-bottom: 6px; font-size: 15px; }
-.error-display p { color: #cbd5e1; font-size: 13px; line-height: 1.6; }
-.meta-info {
-  background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2);
-  padding: 10px 14px; border-radius: 8px; margin-bottom: 16px;
-  font-size: 12px; color: #94a3b8;
+.matrix-cat { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin-bottom: 8px; }
+.matrix-leader { font-family: var(--font-head); font-size: 14px; font-weight: 700; color: var(--accent4); margin-bottom: 4px; }
+.matrix-gap { font-size: 11px; color: var(--text2); line-height: 1.5; }
+.matrix-ranking { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; }
+.matrix-rank-tag {
+  font-size: 10px; padding: 2px 7px; border-radius: 4px;
+  background: var(--bg3); color: var(--text2); border: 1px solid var(--border);
 }
-.file-upload-area {
-  background: rgba(15,23,42,0.6); padding: 16px; border-radius: 10px;
-  border: 2px dashed rgba(16,185,129,0.3); text-align: center;
+
+/* ROADMAP */
+.roadmap { display: flex; flex-direction: column; gap: 0; margin-bottom: 24px; position: relative; }
+.roadmap::before {
+  content: '';
+  position: absolute; left: 19px; top: 0; bottom: 0;
+  width: 1px; background: var(--border2);
 }
-.file-upload-area input[type="file"] {
-  width: 100%; padding: 10px; background: rgba(30,41,59,0.8);
-  border-radius: 7px; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1);
+.road-phase { display: flex; gap: 14px; padding-bottom: 20px; position: relative; }
+.road-dot {
+  width: 39px; height: 39px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  z-index: 1;
 }
-.file-upload-area p { font-size: 12px; color: #94a3b8; margin-top: 8px; line-height: 1.6; }
+.road-dot-1 { background: rgba(0,229,255,0.15); color: var(--accent); border: 1px solid rgba(0,229,255,0.3); }
+.road-dot-2 { background: rgba(16,185,129,0.15); color: var(--accent3); border: 1px solid rgba(16,185,129,0.3); }
+.road-dot-3 { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
+.road-dot-n { background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+.road-content {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px; flex: 1;
+}
+.road-phase-label { font-family: var(--font-head); font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+.road-obj { font-size: 11px; color: var(--accent3); margin-bottom: 9px; }
+.road-actions { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.road-actions li {
+  font-size: 12px; color: var(--text2); line-height: 1.5;
+  padding-left: 14px; position: relative;
+}
+.road-actions li::before { content: '→'; position: absolute; left: 0; color: var(--text3); font-size: 10px; }
+.road-footer { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
+.road-kpi { font-size: 10px; color: var(--accent); font-family: var(--font-mono); }
+.road-invest { font-size: 10px; color: var(--accent4); font-family: var(--font-mono); }
+
+/* OPPORTUNITIES */
+.opp-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+.opp-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+  border-left: 3px solid var(--accent2);
+  display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start;
+}
+.opp-name { font-weight: 600; font-size: 13px; color: #a78bfa; margin-bottom: 4px; }
+.opp-rationale { font-size: 12px; color: var(--text2); line-height: 1.5; }
+.opp-who { font-size: 11px; color: var(--text3); margin-top: 5px; }
+.opp-tags { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+.opp-tag {
+  font-size: 10px; padding: 3px 8px; border-radius: 4px;
+  font-family: var(--font-mono); white-space: nowrap;
+}
+.opp-high { background: rgba(239,68,68,0.1); color: var(--danger); }
+.opp-med { background: rgba(245,158,11,0.1); color: var(--accent4); }
+.opp-low { background: rgba(16,185,129,0.1); color: var(--accent3); }
+.opp-easy { background: rgba(16,185,129,0.1); color: var(--accent3); }
+.opp-hard { background: rgba(239,68,68,0.1); color: var(--danger); }
+
+/* RISK TABLE */
+.risk-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+.risk-row {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 9px; padding: 12px 14px;
+  display: grid; grid-template-columns: auto 1fr 1fr; gap: 12px; align-items: start;
+}
+.risk-impact { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; padding: 3px 7px; border-radius: 4px; letter-spacing: 0.5px; white-space: nowrap; }
+.risk-impact.High { background: rgba(239,68,68,0.15); color: var(--danger); }
+.risk-impact.Medium { background: rgba(245,158,11,0.15); color: var(--accent4); }
+.risk-impact.Low { background: rgba(16,185,129,0.15); color: var(--accent3); }
+.risk-name { font-size: 12px; color: var(--text); font-weight: 500; }
+.risk-mit { font-size: 11px; color: var(--text2); line-height: 1.5; }
+
+/* INTEL CARDS */
+.intel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+.intel-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px;
+}
+.intel-label {
+  font-family: var(--font-mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text3);
+  margin-bottom: 6px;
+}
+.intel-val { font-size: 13px; color: var(--text); line-height: 1.5; font-weight: 500; }
+
+/* QUICK WINS */
+.qw-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+.qw-item {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 9px; padding: 12px 14px;
+}
+.qw-num {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(0,229,255,0.1); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 11px;
+  border: 1px solid rgba(0,229,255,0.2);
+}
+.qw-text { font-size: 13px; color: var(--text2); line-height: 1.5; }
+
+/* EMPTY STATE */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 60px 20px; text-align: center; gap: 12px;
+}
+.empty-icon { font-size: 40px; opacity: 0.3; }
+.empty-title { font-family: var(--font-head); font-size: 16px; color: var(--text2); font-weight: 600; }
+.empty-sub { font-size: 13px; color: var(--text3); line-height: 1.6; max-width: 280px; }
+
+/* ERROR CARD */
+.err-box {
+  background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;
+}
+.err-title { color: var(--danger); font-weight: 600; margin-bottom: 5px; font-size: 13px; }
+.err-msg { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+/* META INFO */
+.meta-bar {
+  background: rgba(0,229,255,0.05); border: 1px solid rgba(0,229,255,0.12);
+  border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;
+  font-size: 11px; color: var(--text3); line-height: 1.7;
+}
+
+/* LOADING */
+.loading-overlay {
+  display: flex; align-items: center; justify-content: center;
+  padding: 40px 20px;
+}
+.loading-content { text-align: center; }
+.loading-spinner {
+  width: 36px; height: 36px;
+  border: 2px solid rgba(0,229,255,0.1);
+  border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+  margin: 0 auto 14px;
+}
+.loading-text { font-size: 13px; color: var(--text3); }
+
+/* PROGRESS ITEMS */
+.progress-list { display: flex; flex-direction: column; gap: 8px; }
+.progress-item {
+  background: var(--bg3); border-radius: 9px; padding: 12px 14px;
+  border-left: 3px solid #3b82f6;
+  display: flex; align-items: center; gap: 10px;
+}
+.progress-item.done { border-left-color: var(--accent3); }
+.progress-item.error-item { border-left-color: var(--danger); }
+.pi-url { font-family: var(--font-mono); font-size: 11px; color: var(--text2); }
+.pi-status { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+/* RESPONSIVE */
 @media (max-width: 1100px) {
-  .main-container { flex-direction: column; height: auto; }
-  .left-panel, .right-panel { width: 100%; }
+  .layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; }
+  .sidebar { max-height: none; }
+  .charts-grid { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .intel-grid { grid-template-columns: 1fr; }
+  .comp-strategies { grid-template-columns: 1fr; }
+  .matrix-grid { grid-template-columns: 1fr; }
+  .main-area { padding: 16px; }
 }
 </style>
 </head>
 <body>
-<div class="header">
-  <h1>🏦 AI Banking Deep Intelligence</h1>
-  <div class="subtitle">Phân tích chuyên sâu sản phẩm &amp; Chiến lược cạnh tranh ngân hàng</div>
+
+<div class="topbar">
+  <div class="logo">Deep<span>Intel</span></div>
+  <div class="topbar-tag">Product & Strategy Analyzer</div>
+  <div class="topbar-right">
+    <div class="status-dot" id="statusDot"></div>
+    <div class="status-text" id="statusText">Ready</div>
+  </div>
 </div>
 
-<div class="main-container">
-  <!-- LEFT: Chi tiết từng ngân hàng -->
-  <div class="left-panel">
-    <div class="input-section">
-      <h3>🎯 Dữ Liệu Đầu Vào</h3>
-      <div class="tab-buttons">
-        <button id="tab-url" class="tab-btn active" onclick="switchTab(0)">🔗 URLs</button>
-        <button id="tab-file" class="tab-btn" onclick="switchTab(1)">📁 Upload File</button>
-      </div>
+<div class="layout">
 
-      <div id="url-section">
-        <textarea id="urls" placeholder="Nhập mỗi URL trên một dòng...">https://techcombank.com/
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <!-- INPUT PANEL -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-head-label">⬡ Input</div>
+      </div>
+      <div class="panel-body">
+        <div class="tabs">
+          <button class="tab active" id="tab-url" onclick="switchTab(0)">URLs</button>
+          <button class="tab" id="tab-file" onclick="switchTab(1)">Upload File</button>
+        </div>
+
+        <div id="url-section">
+          <textarea id="urls" placeholder="Nhập mỗi URL trên 1 dòng...
+Hỗ trợ ngân hàng, công ty, fintech
+(tối đa 5 URLs)">https://techcombank.com/
 https://bidv.com.vn/
 https://www.vietinbank.vn/
 https://www.vietcombank.com.vn/</textarea>
-        <button class="btn-primary" onclick="analyze()" id="analyzeBtn">
-          <span id="btn-text">🔍 Phân Tích Chuyên Sâu</span>
-        </button>
-      </div>
-
-      <div id="file-section" style="display:none;">
-        <div class="file-upload-area" style="margin-top:14px;">
-          <input type="file" id="fileInput" accept=".xlsx,.csv,.pdf">
-          <p>Hỗ trợ: XLSX, CSV, PDF<br>Cần cột: <strong>ten_ngan_hang</strong>, <strong>loai_san_pham</strong></p>
+          <div class="hint">Hỗ trợ: Ngân hàng, Công ty, Fintech, Bảo hiểm, v.v.</div>
+          <button class="btn-run" onclick="analyze()" id="analyzeBtn">
+            <span id="btn-text">▶ Phân Tích Chuyên Sâu</span>
+          </button>
         </div>
-        <button class="btn-primary" onclick="analyzeFromFile()" id="uploadBtn" style="margin-top:10px;">
-          <span id="upload-btn-text">📤 Upload &amp; Phân Tích</span>
-        </button>
+
+        <div id="file-section" style="display:none;">
+          <div class="file-zone" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" accept=".xlsx,.csv,.pdf" onchange="updateFileLabel(this)">
+            <div class="file-zone-label" id="file-label">📎 Chọn file hoặc kéo thả</div>
+            <div class="file-zone-sub">Hỗ trợ XLSX, CSV, PDF</div>
+          </div>
+          <div class="hint" style="margin-top:8px;">Cột cần có: tên tổ chức, danh sách sản phẩm</div>
+          <button class="btn-run" onclick="analyzeFromFile()" id="uploadBtn" style="margin-top:10px;">
+            <span id="upload-btn-text">▲ Upload & Phân Tích</span>
+          </button>
+        </div>
       </div>
     </div>
 
-    <div id="banksContainer">
+    <!-- ENTITY CARDS -->
+    <div id="entitiesContainer">
       <div class="empty-state">
-        <div style="font-size:44px;margin-bottom:14px;">🏦</div>
-        <p>Nhập URLs hoặc Upload File để bắt đầu</p>
-        <p style="font-size:12px;margin-top:8px;opacity:0.6;">
-          AI sẽ phân tích từng ngân hàng (crawl → AI extraction → insights)
-        </p>
+        <div class="empty-icon">◈</div>
+        <div class="empty-title">Chưa có dữ liệu</div>
+        <div class="empty-sub">Nhập URLs hoặc Upload file để bắt đầu phân tích</div>
       </div>
     </div>
   </div>
 
-  <!-- RIGHT: Chiến lược tổng thể -->
-  <div class="right-panel">
-    <div class="panel-header">📊 Phân Tích Cạnh Tranh &amp; Chiến Lược Tổng Thể</div>
-    <div id="strategyContainer">
-      <div class="empty-state">
-        <div style="font-size:44px;margin-bottom:14px;">📈</div>
-        <p>Phân tích chiến lược so sánh sẽ hiển thị ở đây</p>
-      </div>
+  <!-- MAIN AREA -->
+  <div class="main-area" id="mainArea">
+    <div class="empty-state" style="height:100%">
+      <div class="empty-icon">◈</div>
+      <div class="empty-title">Chờ dữ liệu phân tích</div>
+      <div class="empty-sub">Kết quả phân tích chiến lược cạnh tranh sẽ hiện ở đây sau khi chạy phân tích</div>
     </div>
   </div>
+
 </div>
 
 <script>
-// ============================================================
-// HELPERS
-// ============================================================
+// ─── HELPERS ───────────────────────────────────────────────
 function switchTab(tab) {
-  document.getElementById('url-section').style.display = tab === 0 ? 'block' : 'none';
-  document.getElementById('file-section').style.display = tab === 1 ? 'block' : 'none';
-  document.getElementById('tab-url').classList.toggle('active', tab === 0);
-  document.getElementById('tab-file').classList.toggle('active', tab === 1);
+  document.getElementById('url-section').style.display = tab===0?'block':'none';
+  document.getElementById('file-section').style.display = tab===1?'block':'none';
+  document.getElementById('tab-url').classList.toggle('active', tab===0);
+  document.getElementById('tab-file').classList.toggle('active', tab===1);
+}
+
+function updateFileLabel(input) {
+  if (input.files.length) {
+    document.getElementById('file-label').textContent = '✓ ' + input.files[0].name;
+  }
+}
+
+function setStatus(text, active=false) {
+  document.getElementById('statusText').textContent = text;
+  const dot = document.getElementById('statusDot');
+  dot.style.background = active ? '#f59e0b' : '#10b981';
+  dot.style.boxShadow = `0 0 8px ${active ? '#f59e0b' : '#10b981'}`;
 }
 
 function setLoading(btnId, textId, loading, defaultText) {
@@ -310,134 +728,142 @@ function setLoading(btnId, textId, loading, defaultText) {
   const txt = document.getElementById(textId);
   btn.disabled = loading;
   txt.innerHTML = loading
-    ? '<span class="spinner"></span> Đang phân tích...'
+    ? '<span class="spin"></span>Đang phân tích...'
     : defaultText;
 }
 
-// ============================================================
-// MAIN ANALYZE
-// ============================================================
+// ─── ANALYZE ──────────────────────────────────────────────
 async function analyze() {
   const urls = document.getElementById('urls').value
-    .split('\n').map(u => u.trim()).filter(Boolean);
+    .split('\n').map(u=>u.trim()).filter(Boolean);
   if (!urls.length) { alert('Vui lòng nhập ít nhất 1 URL'); return; }
 
-  setLoading('analyzeBtn', 'btn-text', true);
-  showProgress(urls);
+  setLoading('analyzeBtn','btn-text',true);
+  setStatus('Đang crawl & phân tích...', true);
+  showProgress(urls, 'Crawling websites...');
 
   try {
     const res = await fetch('/analyze', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({urls}),
-      signal: AbortSignal.timeout(360000)
+      signal: AbortSignal.timeout(420000)
     });
     const data = await res.json();
-    if (data.status === 'error') throw new Error(data.message);
+    if (data.status==='error') throw new Error(data.message);
     renderAll(data);
-  } catch (err) {
+    setStatus(`Done — ${data.meta?.successful||0}/${data.meta?.total||0} analyzed`);
+  } catch(err) {
     showError(err.message);
+    setStatus('Error', false);
   } finally {
-    setLoading('analyzeBtn', 'btn-text', false, '🔍 Phân Tích Chuyên Sâu');
+    setLoading('analyzeBtn','btn-text',false,'▶ Phân Tích Chuyên Sâu');
   }
 }
 
 async function analyzeFromFile() {
-  const fileInput = document.getElementById('fileInput');
-  if (!fileInput.files.length) { alert('Vui lòng chọn file!'); return; }
-  const formData = new FormData();
-  formData.append('file', fileInput.files[0]);
-  setLoading('uploadBtn', 'upload-btn-text', true);
+  const fi = document.getElementById('fileInput');
+  if (!fi.files.length) { alert('Vui lòng chọn file!'); return; }
+  const fd = new FormData();
+  fd.append('file', fi.files[0]);
+  setLoading('uploadBtn','upload-btn-text',true);
+  setStatus('Đang xử lý file...', true);
+
   try {
-    const res = await fetch('/api/analyze-upload', {method:'POST', body: formData});
+    const res = await fetch('/api/analyze-upload',{method:'POST',body:fd});
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     renderAll(data);
-  } catch (err) {
+    setStatus(`Done — ${data.results?.length||0} entities from file`);
+  } catch(err) {
     showError(err.message);
+    setStatus('Error', false);
   } finally {
-    setLoading('uploadBtn', 'upload-btn-text', false, '📤 Upload & Phân Tích');
+    setLoading('uploadBtn','upload-btn-text',false,'▲ Upload & Phân Tích');
   }
 }
 
-// ============================================================
-// PROGRESS
-// ============================================================
-function showProgress(urls) {
-  const html = `
-    <div style="background:rgba(30,41,59,0.8);border-radius:14px;padding:18px;">
-      <div style="font-size:13px;color:#10b981;margin-bottom:14px;font-weight:600;">
-        🤖 AI đang phân tích ${urls.length} ngân hàng...
-      </div>
-      ${urls.map(u => `
-        <div style="background:rgba(15,23,42,0.6);padding:13px;border-radius:10px;margin-bottom:10px;border-left:4px solid #3b82f6;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span class="spinner" style="width:14px;height:14px;flex-shrink:0;"></span>
-            <span style="font-size:13px;color:#e2e8f0;">${u}</span>
-          </div>
-          <div style="font-size:11px;color:#64748b;margin-top:5px;padding-left:24px;">
-            Crawl → AI Extraction → Generate insights...
-          </div>
+// ─── PROGRESS ────────────────────────────────────────────
+function showProgress(urls, msg) {
+  document.getElementById('entitiesContainer').innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><div class="panel-head-label">◈ Processing ${urls.length} entities</div></div>
+      <div class="panel-body">
+        <div class="progress-list">
+          ${urls.map(u=>`
+            <div class="progress-item">
+              <span class="spin"></span>
+              <div>
+                <div class="pi-url">${u}</div>
+                <div class="pi-status">Crawling → AI extraction...</div>
+              </div>
+            </div>`).join('')}
         </div>
-      `).join('')}
+      </div>
     </div>`;
-  document.getElementById('banksContainer').innerHTML = html;
-  document.getElementById('strategyContainer').innerHTML = `
-    <div class="empty-state">
-      <span class="spinner" style="width:32px;height:32px;border-width:3px;margin-bottom:16px;display:inline-block;"></span>
-      <p style="margin-top:10px;">Đang tổng hợp chiến lược...</p>
+
+  document.getElementById('mainArea').innerHTML = `
+    <div class="loading-overlay">
+      <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Deep crawling & AI analysis in progress...<br>
+        <span style="font-size:11px;opacity:0.6">This may take 1-3 minutes for thorough analysis</span></div>
+      </div>
     </div>`;
 }
 
-// ============================================================
-// RENDER ALL
-// ============================================================
+// ─── RENDER ALL ─────────────────────────────────────────
 function renderAll(data) {
   const meta = data.meta || {};
-  if (meta.from_knowledge_base > 0) {
-    document.getElementById('banksContainer').insertAdjacentHTML('afterbegin', `
-      <div class="meta-info">
-        ℹ️ ${meta.from_knowledge_base}/${meta.total} ngân hàng dùng knowledge base (website chặn bot).
-        Dữ liệu vẫn đầy đủ và chính xác.
-      </div>`);
+
+  // Meta info bar
+  let metaHtml = '';
+  if (meta.crawl_errors?.length) {
+    metaHtml = `<div class="meta-bar">
+      ⚠ ${meta.crawl_errors.length} site(s) có vấn đề khi crawl.
+      Các site còn lại đã được phân tích thành công.
+    </div>`;
   }
-  renderBankDetails(data.results || []);
-  renderStrategy(data.strategy || {});
+
+  document.getElementById('entitiesContainer').innerHTML = metaHtml;
+  renderEntityCards(data.results||[]);
+  renderStrategy(data.strategy||{}, data.results||[], meta);
 }
 
 function showError(msg) {
-  document.getElementById('banksContainer').innerHTML = `
-    <div class="error-display">
-      <h3>❌ Lỗi Phân Tích</h3>
-      <p>${msg}</p>
+  document.getElementById('entitiesContainer').innerHTML = `
+    <div class="err-box">
+      <div class="err-title">✕ Lỗi phân tích</div>
+      <div class="err-msg">${msg}</div>
     </div>`;
-  document.getElementById('strategyContainer').innerHTML = `
-    <div class="empty-state"><div style="font-size:40px;margin-bottom:14px;">⚠️</div>
-    <p>Không thể tạo chiến lược</p></div>`;
+  document.getElementById('mainArea').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">⚠</div>
+      <div class="empty-title">Không thể phân tích</div>
+      <div class="empty-sub">${msg}</div>
+    </div>`;
 }
 
-// ============================================================
-// RENDER BANK DETAILS
-// ============================================================
-const CAT_COLORS = {
-  SAVINGS:'tag-savings', LOAN:'tag-loan', CARD:'tag-card',
-  DIGITAL:'tag-digital', INSURANCE:'tag-insurance',
-  INVESTMENT:'tag-investment', OTHER:'tag-other'
-};
+// ─── ENTITY ICON ────────────────────────────────────────
+function getEntityIcon(type) {
+  const icons = {bank:'🏦', fintech:'💳', insurance:'🛡', company:'🏢', other:'◈'};
+  return icons[type] || '◈';
+}
+
+// ─── ENTITY CARDS ───────────────────────────────────────
 const CAT_NAMES = {
-  SAVINGS:'Tiết Kiệm', LOAN:'Cho Vay', CARD:'Thẻ',
-  DIGITAL:'Ngân Hàng Số', INSURANCE:'Bảo Hiểm',
-  INVESTMENT:'Đầu Tư', OTHER:'Khác'
+  SAVINGS:'Tiết Kiệm', LOAN:'Cho Vay', CARD:'Thẻ', DIGITAL:'Digital',
+  INSURANCE:'Bảo Hiểm', INVESTMENT:'Đầu Tư', PAYMENT:'Thanh Toán',
+  BUSINESS:'Doanh Nghiệp', LIFE:'Nhân Thọ', HEALTH:'Sức Khỏe',
+  PRODUCT:'Sản Phẩm', SERVICE:'Dịch Vụ', SUBSCRIPTION:'Đăng Ký',
+  SOLUTION:'Giải Pháp', OTHER:'Khác'
 };
 
-function renderBankDetails(results) {
-  const container = document.getElementById('banksContainer');
-  const existing = container.querySelector('.meta-info');
-  container.innerHTML = '';
-  if (existing) container.appendChild(existing);
+function renderEntityCards(results) {
+  const container = document.getElementById('entitiesContainer');
 
   if (!results.length) {
-    container.innerHTML += `<div class="empty-state"><p>Không có dữ liệu ngân hàng</p></div>`;
+    container.innerHTML += `<div class="empty-state"><div class="empty-title">Không có dữ liệu</div></div>`;
     return;
   }
 
@@ -446,138 +872,155 @@ function renderBankDetails(results) {
     const strategic = a.strategic_analysis || {};
     const competitive = a.competitive_assessment || {};
     const isError = result.extraction_quality === 'error';
+    const entityType = result.entity_type || a.entity_type || 'company';
 
-    const card = document.createElement('div');
-    card.className = 'bank-detail-card';
-    if (isError) card.style.borderLeftColor = '#ef4444';
-
+    const name = a.entity_name || a.bank_name || 'Unknown';
+    const code = a.entity_code || a.bank_code || '';
     const quality = result.extraction_quality || 'limited';
-    const qualityLabels = {deep:'Deep Analysis', good:'Good', limited:'Limited', error:'ERROR'};
-    const sourceBadge = result.source === 'knowledge_base'
-      ? '<span class="source-badge source-kb">📚 Knowledge Base</span>'
-      : result.source === 'live_crawl'
-      ? '<span class="source-badge source-live">🌐 Live Crawl</span>' : '';
+    const source = result.source || 'unknown';
 
     // Group products by category
-    const byCategory = {};
-    (a.products || []).forEach(p => {
-      const cat = (p.category || 'OTHER').toUpperCase();
-      if (!byCategory[cat]) byCategory[cat] = [];
-      byCategory[cat].push(p);
+    const byCat = {};
+    (a.products||[]).forEach(p => {
+      const cat = (typeof p === 'object' ? p.category : 'OTHER') || 'OTHER';
+      const catUp = cat.toUpperCase();
+      if (!byCat[catUp]) byCat[catUp] = [];
+      byCat[catUp].push(typeof p === 'object' ? p.name : p);
     });
 
-    const rates = a.interest_rates || {};
+    const typeClass = `badge-type-${entityType}`;
+    const srcClass = source.includes('live') ? 'badge-src-live' : source==='file_upload' ? 'badge-src-upload' : 'badge-src-error';
+    const srcLabel = source.includes('live') ? '● Live' : source==='file_upload' ? '▲ File' : '✕ Error';
+    const qualityClass = `badge-quality-${quality}`;
+    const qualityLabels = {deep:'◉ Deep', good:'◎ Good', limited:'○ Limited', error:'✕ Error'};
+
+    // Rates
+    const rates = a.interest_rates || a.pricing?.interest_rates || {};
+    const rateEntries = Object.entries(rates).filter(([,v])=>v && v!=='Không tìm thấy');
+
+    // Confidence
+    const confidence = a.data_confidence || 'medium';
+    const confPct = {high:100, medium:60, low:30, none:5}[confidence] || 50;
+
+    const card = document.createElement('div');
+    card.className = `entity-card quality-${quality}`;
 
     card.innerHTML = `
-      <div class="bank-header">
-        <div>
-          <div class="bank-title" style="${isError ? 'color:#ef4444' : ''}">${a.bank_name || 'Unknown'}</div>
-          <span class="bank-code">${a.bank_code || ''}</span>${sourceBadge}
+      <div class="ec-header">
+        <div class="ec-icon">${getEntityIcon(entityType)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="ec-name" title="${name}">${name}</div>
+          <div class="ec-meta">
+            <span class="ec-badge badge-code">${code}</span>
+            <span class="ec-badge ${typeClass}">${entityType}</span>
+            <span class="ec-badge ${srcClass}">${srcLabel}</span>
+          </div>
         </div>
-        <span class="quality-badge quality-${quality}">${qualityLabels[quality] || quality}</span>
+        <div class="ec-quality">
+          <span class="ec-badge ${qualityClass}">${qualityLabels[quality]||quality}</span>
+        </div>
       </div>
+      <div class="ec-body">
+        ${isError ? `
+          <div class="err-box" style="margin:0">
+            <div class="err-title">Crawl thất bại</div>
+            <div class="err-msg">${(competitive.weaknesses||['Không crawl được'])[0]}</div>
+          </div>` : `
 
-      ${isError ? `
-        <div class="strategic-box" style="border-left:3px solid #ef4444">
-          <h4 style="color:#ef4444">Lỗi</h4>
-          <p>${(competitive.weaknesses || ['Không thể phân tích']).join(', ')}</p>
-        </div>` : `
-
-      <div class="metric-row">
-        <div class="metric-item"><div class="metric-value">${(a.products||[]).length}</div><div class="metric-label">Sản Phẩm</div></div>
-        <div class="metric-item"><div class="metric-value">${(a.promotions||[]).length}</div><div class="metric-label">KM</div></div>
-        <div class="metric-item"><div class="metric-value">${(a.digital_capabilities||[]).length}</div><div class="metric-label">Digital</div></div>
-        <div class="metric-item"><div class="metric-value" style="font-size:14px">${competitive.market_position||'?'}</div><div class="metric-label">Vị Thế</div></div>
-      </div>
-
-      ${Object.keys(byCategory).length ? `
-        <div class="section-title">📦 Sản Phẩm</div>
-        ${Object.entries(byCategory).map(([cat, prods]) => `
-          <div style="margin-bottom:10px">
-            <div style="font-size:11px;color:#64748b;margin-bottom:5px;text-transform:uppercase">
-              ${CAT_NAMES[cat]||cat} (${prods.length})
-            </div>
-            <div class="product-list">
-              ${prods.map(p => `
-                <span class="product-tag ${CAT_COLORS[cat]||'tag-other'}"
-                  title="${(p.features||[]).join(', ')}">
-                  ${p.name||p}
-                </span>`).join('')}
-            </div>
-          </div>`).join('')}` : ''}
-
-      ${Object.keys(rates).length ? `
-        <div class="section-title">💰 Lãi Suất</div>
-        <div style="display:flex;flex-wrap:wrap;gap:7px">
-          ${Object.entries(rates).map(([k,v]) => `
-            <div style="background:rgba(16,185,129,0.1);padding:7px 11px;border-radius:7px;font-size:12px">
-              <span style="color:#64748b">${k.replace(/_/g,' ')}:</span>
-              <span style="color:#10b981;font-weight:600;margin-left:4px">${v}</span>
-            </div>`).join('')}
-        </div>` : ''}
-
-      ${(a.promotions||[]).length ? `
-        <div class="section-title">🎁 Khuyến Mãi</div>
-        <div style="display:flex;flex-direction:column;gap:7px">
-          ${a.promotions.slice(0,4).map(p => `
-            <div style="background:rgba(245,158,11,0.1);padding:9px 12px;border-radius:7px;border-left:3px solid #f59e0b">
-              <div style="font-weight:600;color:#fbbf24;font-size:12px">${p.name||p}</div>
-              ${p.benefit ? `<div style="font-size:11px;color:#94a3b8;margin-top:3px">${p.benefit}</div>` : ''}
-              ${p.target_segment ? `<div style="font-size:11px;color:#64748b">🎯 ${p.target_segment}</div>` : ''}
-            </div>`).join('')}
-        </div>` : ''}
-
-      ${strategic.positioning ? `
-        <div class="section-title">🎯 Chiến Lược</div>
-        <div class="strategic-box">
-          <h4>Định Vị</h4><p>${strategic.positioning}</p>
-        </div>` : ''}
-
-      ${(strategic.key_differentiators||[]).length ? `
-        <div class="strategic-box">
-          <h4>Điểm Khác Biệt</h4>
-          <ul>${strategic.key_differentiators.map(d=>`<li>${d}</li>`).join('')}</ul>
-        </div>` : ''}
-
-      ${(competitive.strengths||[]).length || (competitive.weaknesses||[]).length ? `
-        <div class="section-title">💪 Cạnh Tranh</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div class="strategic-box" style="border-left:3px solid #10b981">
-            <h4 style="color:#10b981">Mạnh (${(competitive.strengths||[]).length})</h4>
-            <ul>${(competitive.strengths||[]).map(s=>`<li>${s}</li>`).join('')}</ul>
+        <div class="ec-metrics">
+          <div class="ec-metric">
+            <div class="ec-metric-val">${(a.products||[]).length}</div>
+            <div class="ec-metric-lbl">Products</div>
           </div>
-          <div class="strategic-box" style="border-left:3px solid #ef4444">
-            <h4 style="color:#ef4444">Yếu (${(competitive.weaknesses||[]).length})</h4>
-            <ul>${(competitive.weaknesses||[]).map(w=>`<li>${w}</li>`).join('')}</ul>
+          <div class="ec-metric">
+            <div class="ec-metric-val">${(a.promotions||a.pricing?.promotions||[]).length}</div>
+            <div class="ec-metric-lbl">Promos</div>
           </div>
-        </div>` : ''}
+          <div class="ec-metric">
+            <div class="ec-metric-val">${(a.digital_capabilities||[]).length}</div>
+            <div class="ec-metric-lbl">Digital</div>
+          </div>
+        </div>
 
-      ${competitive.competitive_threat_level ? `
-        <div style="margin-top:10px;padding:9px;background:rgba(59,130,246,0.1);border-radius:7px;text-align:center;font-size:12px">
-          Mức đe dọa:
-          <span style="color:${competitive.competitive_threat_level==='High'?'#ef4444':competitive.competitive_threat_level==='Medium'?'#f59e0b':'#10b981'};font-weight:700;margin-left:4px">
-            ${competitive.competitive_threat_level}
-          </span>
-        </div>` : ''}
+        ${Object.keys(byCat).length ? `
+          <div>
+            <div class="ec-section-title">Products by Category</div>
+            ${Object.entries(byCat).slice(0,6).map(([cat,prods])=>`
+              <div style="margin-bottom:8px">
+                <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:var(--font-mono)">
+                  ${CAT_NAMES[cat]||cat} · ${prods.length}
+                </div>
+                <div class="tag-wrap">
+                  ${prods.slice(0,5).map(p=>`<span class="tag tag-${cat}" title="${p}">${p.length>30?p.slice(0,28)+'…':p}</span>`).join('')}
+                  ${prods.length>5?`<span style="font-size:10px;color:var(--text3);padding:4px 6px">+${prods.length-5}</span>`:''}
+                </div>
+              </div>`).join('')}
+          </div>` : ''}
 
-      ${(a.digital_capabilities||[]).length ? `
-        <div class="section-title">💻 Digital</div>
-        <div class="product-list">
-          ${a.digital_capabilities.map(d=>`<span class="product-tag tag-digital">${d}</span>`).join('')}
-        </div>` : ''}
-      `}`;
+        ${rateEntries.length ? `
+          <div>
+            <div class="ec-section-title">Rates</div>
+            <div class="tag-wrap">
+              ${rateEntries.map(([k,v])=>`
+                <div style="background:var(--bg3);padding:5px 9px;border-radius:6px;font-size:11px">
+                  <span style="color:var(--text3)">${k.replace(/_/g,' ')}:</span>
+                  <span style="color:var(--accent3);font-family:var(--font-mono);margin-left:4px">${v}</span>
+                </div>`).join('')}
+            </div>
+          </div>` : ''}
+
+        ${strategic.positioning ? `
+          <div>
+            <div class="ec-section-title">Positioning</div>
+            <div class="positioning-text">${strategic.positioning}</div>
+          </div>` : ''}
+
+        ${(competitive.strengths?.length || competitive.weaknesses?.length) ? `
+          <div>
+            <div class="ec-section-title">SWOT</div>
+            <div class="swot-grid">
+              <div class="swot-box">
+                <div class="swot-label s">Strengths</div>
+                ${(competitive.strengths||[]).slice(0,3).map(s=>`<div class="swot-item">${s}</div>`).join('')}
+              </div>
+              <div class="swot-box">
+                <div class="swot-label w">Weaknesses</div>
+                ${(competitive.weaknesses||[]).slice(0,3).map(w=>`<div class="swot-item">${w}</div>`).join('')}
+              </div>
+            </div>
+          </div>` : ''}
+
+        ${competitive.competitive_threat_level && competitive.competitive_threat_level!=='Unknown' ? `
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-size:10px;color:var(--text3)">Threat Level:</div>
+            <span class="threat-badge threat-${competitive.competitive_threat_level}">
+              ${competitive.competitive_threat_level==='High'?'⬆':'competitive.competitive_threat_level'==='Medium'?'→':'⬇'} ${competitive.competitive_threat_level}
+            </span>
+          </div>` : ''}
+
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);font-family:var(--font-mono)">
+            <span>Data Confidence</span><span>${confidence}</span>
+          </div>
+          <div class="confidence-bar conf-${confidence}">
+            <div class="confidence-fill" style="width:${confPct}%"></div>
+          </div>
+        </div>`}
+      </div>`;
 
     container.appendChild(card);
   });
 }
 
-// ============================================================
-// RENDER STRATEGY (snake_case keys)
-// ============================================================
-function renderStrategy(strategy) {
-  const container = document.getElementById('strategyContainer');
+// ─── STRATEGY ───────────────────────────────────────────
+function renderStrategy(strategy, results, meta) {
+  const main = document.getElementById('mainArea');
+
   if (!strategy || !strategy.executive_summary) {
-    container.innerHTML = `<div class="empty-state"><p>Không có dữ liệu chiến lược</p></div>`;
+    main.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">◈</div>
+      <div class="empty-title">Không có dữ liệu chiến lược</div>
+    </div>`;
     return;
   }
 
@@ -587,155 +1030,469 @@ function renderStrategy(strategy) {
   const matrix = strategy.product_comparison_matrix || {};
   const opps = strategy.market_opportunities || [];
   const risks = strategy.risk_mitigation || [];
+  const overview = strategy.market_overview || {};
+  const intel = strategy.competitive_intelligence_summary || {};
 
   let html = '';
 
-  if (strategy.executive_summary) {
+  // ── Stats Row
+  const totalProds = results.reduce((s,r)=>s+(r.analysis?.products?.length||0),0);
+  const avgScore = ranking.length ?
+    (ranking.reduce((s,r)=>s+parseFloat(r.score||0),0)/ranking.length).toFixed(1) : 'N/A';
+  const highThreats = results.filter(r=>r.analysis?.competitive_assessment?.competitive_threat_level==='High').length;
+
+  html += `
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-val cyan">${meta.total||results.length}</div>
+        <div class="stat-lbl">Entities Analyzed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val green">${totalProds}</div>
+        <div class="stat-lbl">Products Found</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val purple">${opps.length}</div>
+        <div class="stat-lbl">Opportunities</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val amber">${highThreats}</div>
+        <div class="stat-lbl">High Threats</div>
+      </div>
+    </div>`;
+
+  // ── Executive Summary
+  html += `
+    <div class="summary-card">
+      <div class="summary-label">◉ Executive Intelligence Summary</div>
+      <div class="summary-text">${strategy.executive_summary}</div>
+    </div>`;
+
+  // ── Market Overview trends
+  if (overview.key_trends?.length || overview.market_dynamics) {
     html += `
-      <div class="strategy-overview">
-        <h3>📋 Tóm Tắt Chiến Lược</h3>
-        <p>${strategy.executive_summary}</p>
+      <div class="section-header">
+        <h2>Market Dynamics</h2><div class="section-line"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">
+        ${overview.market_dynamics ? `
+          <div class="intel-card" style="grid-column:1/-1">
+            <div class="intel-label">Market Dynamics</div>
+            <div class="intel-val">${overview.market_dynamics}</div>
+          </div>` : ''}
+        ${(overview.key_trends||[]).map(t=>`
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
+            <span style="color:var(--accent);font-size:14px">→</span>
+            <span style="font-size:12px;color:var(--text2);line-height:1.5">${t}</span>
+          </div>`).join('')}
       </div>`;
   }
 
+  // ── Competitive Ranking
   if (ranking.length) {
     html += `
-      <div class="ranking-table">
-        <div class="ranking-header">🏆 Bảng Xếp Hạng Cạnh Tranh</div>
-        ${ranking.map((r, i) => `
-          <div class="ranking-item">
-            <div class="rank-number rank-${i<3?i+1:'other'}">${r.rank||i+1}</div>
-            <div class="rank-info">
-              <div class="rank-bank-name">${r.bank||''}</div>
-              <div class="rank-position">${r.position||''} ${r.key_strength?'• '+r.key_strength:''}</div>
-              ${r.analysis ? `<div style="font-size:11px;color:#64748b;margin-top:2px">${r.analysis}</div>` : ''}
-            </div>
-            <div class="rank-score">
-              <div class="score-value">${r.score||'-'}</div>
-              <div class="score-label">Điểm</div>
-            </div>
-          </div>`).join('')}
+      <div class="section-header">
+        <h2>Competitive Ranking</h2><div class="section-line"></div>
+      </div>
+      <div class="rank-table" style="margin-bottom:24px">
+        <div class="rank-table-head">
+          <span>◉ Leaderboard</span>
+          <span style="margin-left:auto">${ranking.length} entities ranked</span>
+        </div>
+        ${ranking.map((r,i) => {
+          const score = parseFloat(r.score||r.score||0);
+          const pct = score ? Math.min(100, score*10) : 0;
+          const rankClass = i===0?'rn-1':i===1?'rn-2':i===2?'rn-3':'rn-other';
+          const name = r.entity || r.bank || '';
+          return `
+            <div class="rank-row">
+              <div class="rank-num ${rankClass}">${r.rank||i+1}</div>
+              <div>
+                <div class="rank-name">${name}</div>
+                <div class="rank-sub">${r.position||''} ${r.key_strength?'· '+r.key_strength:''}</div>
+                ${r.analysis?`<div style="font-size:11px;color:var(--text3);margin-top:3px">${r.analysis}</div>`:''}
+              </div>
+              <div class="rank-bar-wrap">
+                <div class="rank-bar"><div class="rank-bar-fill" style="width:${pct}%"></div></div>
+              </div>
+              <div class="rank-score-wrap">
+                <div class="rank-score">${r.score||'–'}</div>
+                <div class="rank-score-lbl">score</div>
+              </div>
+            </div>`;
+        }).join('')}
       </div>`;
   }
 
-  detailed.forEach(comp => {
-    const sc = comp.competitive_score || {};
+  // ── Charts
+  if (detailed.length >= 2) {
+    const chartIds = { radar: 'chart-radar-' + Date.now(), bar: 'chart-bar-' + Date.now() };
     html += `
-      <div class="competitor-deep-dive">
-        <h3>🔍 ${comp.bank||'Ngân Hàng'}</h3>
-        ${[
-          ['Chiến Lược Sản Phẩm', comp.product_strategy],
-          ['Chiến Lược Giá', comp.pricing_strategy],
-          ['Phân Phối', comp.distribution_strategy],
-          ['Số Hóa', comp.digital_strategy]
-        ].filter(([,v])=>v).map(([label,val])=>`
-          <div class="strategy-section">
-            <h4>${label}</h4><p>${val}</p>
-          </div>`).join('')}
-
-        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:14px">
-          ${[
-            ['Sản phẩm','#3b82f6',sc.product_breadth],
-            ['Digital','#8b5cf6',sc.digital_capability],
-            ['Giá cả','#10b981',sc.pricing_competitiveness],
-            ['Brand','#f59e0b',sc.brand_strength],
-            ['Tổng','#ef4444',sc.overall]
-          ].map(([label,color,val])=>`
-            <div style="text-align:center;padding:10px;background:rgba(15,23,42,0.6);border-radius:7px">
-              <div style="font-size:18px;font-weight:700;color:${color}">${val||'-'}/10</div>
-              <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-top:3px">${label}</div>
-            </div>`).join('')}
+      <div class="section-header">
+        <h2>Competitive Scores</h2><div class="section-line"></div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">◎ Score Radar — Top Competitors</div>
+          <div class="chart-wrap"><canvas id="${chartIds.radar}"></canvas></div>
         </div>
-
-        ${(comp.key_threats||[]).length ? `
-          <div style="margin-top:10px;padding:9px;background:rgba(239,68,68,0.1);border-radius:7px;font-size:12px">
-            <span style="color:#ef4444;font-weight:600">⚠️ Đe dọa: </span>
-            <span style="color:#cbd5e1">${comp.key_threats.join(', ')}</span>
-          </div>` : ''}
-        ${(comp.key_opportunities||[]).length ? `
-          <div style="margin-top:7px;padding:9px;background:rgba(16,185,129,0.1);border-radius:7px;font-size:12px">
-            <span style="color:#10b981;font-weight:600">💡 Cơ hội: </span>
-            <span style="color:#cbd5e1">${comp.key_opportunities.join(', ')}</span>
-          </div>` : ''}
+        <div class="chart-card">
+          <div class="chart-title">◎ Overall Score Comparison</div>
+          <div class="chart-wrap"><canvas id="${chartIds.bar}"></canvas></div>
+        </div>
       </div>`;
-  });
 
+    // Defer chart rendering
+    setTimeout(() => renderCharts(detailed, chartIds), 200);
+  }
+
+  // ── Competitor Deep Dive
+  if (detailed.length) {
+    html += `
+      <div class="section-header">
+        <h2>Deep Competitor Analysis</h2><div class="section-line"></div>
+      </div>
+      <div class="comp-grid">
+        ${detailed.map(comp => {
+          const sc = comp.competitive_score || {};
+          const name = comp.entity || comp.bank || '';
+          const scoreFields = [
+            ['Product Breadth', sc.product_breadth],
+            ['Digital', sc.digital_capability],
+            ['Pricing', sc.pricing_competitiveness],
+            ['Brand', sc.brand_strength],
+            ['CX', sc.customer_experience],
+            ['Innovation', sc.innovation]
+          ].filter(([,v])=>v);
+
+          return `
+            <div class="comp-card">
+              <div class="comp-card-head">
+                <div class="comp-card-name">${name}</div>
+                ${sc.overall ? `
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">Overall</span>
+                    <span style="font-family:var(--font-mono);font-size:18px;color:var(--accent3)">${sc.overall}/10</span>
+                  </div>` : ''}
+              </div>
+              <div class="comp-card-body">
+                <div class="comp-strategies">
+                  ${[
+                    ['Product Strategy', comp.product_strategy],
+                    ['Pricing', comp.pricing_strategy],
+                    ['Distribution', comp.distribution_strategy],
+                    ['Digital', comp.digital_strategy]
+                  ].filter(([,v])=>v).map(([lbl,val])=>`
+                    <div class="strat-item">
+                      <div class="strat-label">${lbl}</div>
+                      <div class="strat-text">${val}</div>
+                    </div>`).join('')}
+                </div>
+
+                ${scoreFields.length ? `
+                  <div class="score-bars">
+                    ${scoreFields.map(([lbl,val])=>{
+                      const v = parseFloat(val)||0;
+                      const colors = ['#00e5ff','#10b981','#a78bfa','#f59e0b','#f472b6','#38bdf8'];
+                      const color = colors[scoreFields.indexOf(scoreFields.find(f=>f[0]===lbl)) % colors.length];
+                      return `
+                        <div class="score-bar-row">
+                          <div class="score-bar-label">${lbl}</div>
+                          <div class="score-bar-track">
+                            <div class="score-bar-fill" style="width:${v*10}%;background:${color}"></div>
+                          </div>
+                          <div class="score-bar-val">${val||'–'}</div>
+                        </div>`;
+                    }).join('')}
+                  </div>` : ''}
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">
+                  ${(comp.key_threats||[]).length ? `
+                    <div style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:10px">
+                      <div style="font-size:9px;color:var(--danger);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;font-family:var(--font-mono)">Key Threats</div>
+                      ${comp.key_threats.map(t=>`<div style="font-size:11px;color:var(--text2);line-height:1.5;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--danger)">!</span>${t}</div>`).join('')}
+                    </div>` : ''}
+                  ${(comp.key_opportunities||[]).length ? `
+                    <div style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:8px;padding:10px">
+                      <div style="font-size:9px;color:var(--accent3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;font-family:var(--font-mono)">Opportunities</div>
+                      ${comp.key_opportunities.map(o=>`<div style="font-size:11px;color:var(--text2);line-height:1.5;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--accent3)">+</span>${o}</div>`).join('')}
+                    </div>` : ''}
+                </div>
+
+                ${comp.strategic_verdict ? `
+                  <div style="margin-top:10px;padding:10px;background:rgba(0,229,255,0.05);border-left:2px solid rgba(0,229,255,0.3);border-radius:0 7px 7px 0;font-size:12px;color:var(--text2);line-height:1.6">
+                    ${comp.strategic_verdict}
+                  </div>` : ''}
+              </div>
+            </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  // ── Product Matrix
   if (Object.keys(matrix).length) {
     html += `
-      <div class="competitor-deep-dive">
-        <h3 style="color:#8b5cf6">📊 So Sánh Sản Phẩm</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          ${Object.entries(matrix).map(([cat, d]) => `
-            <div style="background:rgba(15,23,42,0.6);padding:12px;border-radius:9px;border-left:3px solid #8b5cf6">
-              <div style="font-size:11px;color:#8b5cf6;text-transform:uppercase;margin-bottom:5px">${cat}</div>
-              <div style="font-weight:600;color:#e2e8f0;font-size:13px">🥇 ${d.leader||'N/A'}</div>
-              <div style="font-size:11px;color:#94a3b8;margin-top:3px">${d.gap_analysis||''}</div>
-            </div>`).join('')}
-        </div>
+      <div class="section-header">
+        <h2>Product Comparison Matrix</h2><div class="section-line"></div>
+      </div>
+      <div class="matrix-grid">
+        ${Object.entries(matrix).map(([cat,d])=>`
+          <div class="matrix-cell">
+            <div class="matrix-cat">${cat}</div>
+            <div class="matrix-leader">🏆 ${d.leader||'N/A'}</div>
+            ${(d.ranking||[]).length ? `
+              <div class="matrix-ranking">
+                ${d.ranking.map(r=>`<span class="matrix-rank-tag">${r}</span>`).join('')}
+              </div>` : ''}
+            <div class="matrix-gap" style="margin-top:8px">${d.gap_analysis||''}</div>
+          </div>`).join('')}
       </div>`;
   }
 
+  // ── Strategic Recommendations
   if (recs.overall_strategy) {
     html += `
-      <div class="competitor-deep-dive" style="border:1px solid rgba(16,185,129,0.3)">
-        <h3 style="color:#10b981">🎯 Chiến Lược Đề Xuất</h3>
-        ${[
-          ['Tổng Thể', recs.overall_strategy],
-          ['Sản Phẩm', recs.product_strategy],
-          ['Giá & Định Vị', recs.pricing_strategy],
-          ['Phân Phối', recs.distribution_strategy],
-          ['Số Hóa', recs.digital_strategy]
-        ].filter(([,v])=>v).map(([label,val])=>`
-          <div class="strategy-section"><h4>${label}</h4><p>${val}</p></div>`).join('')}
+      <div class="section-header">
+        <h2>Strategic Recommendations</h2><div class="section-line"></div>
       </div>`;
-  }
 
-  if ((recs.implementation_roadmap||[]).length) {
-    html += `
-      <div class="competitor-deep-dive">
-        <h3 style="color:#f59e0b">📅 Lộ Trình Thực Thi</h3>
-        <div>
-          ${recs.implementation_roadmap.map(ph => `
-            <div class="roadmap-phase">
-              <h5>${ph.phase||''}</h5>
-              <ul>${(ph.actions||[]).map(a=>`<li>${a}</li>`).join('')}</ul>
-              ${ph.milestones ? `<div style="font-size:11px;color:#10b981;margin-top:6px">🎯 ${ph.milestones}</div>` : ''}
-              ${ph.investment_required ? `<div style="font-size:11px;color:#f59e0b">💰 ${ph.investment_required}</div>` : ''}
-            </div>`).join('')}
+    // Strategy texts
+    const stratItems = [
+      ['Overall Strategy', recs.overall_strategy],
+      ['Product Strategy', recs.product_strategy],
+      ['Pricing Strategy', recs.pricing_strategy],
+      ['Distribution', recs.distribution_strategy],
+      ['Digital Roadmap', recs.digital_strategy]
+    ].filter(([,v])=>v);
+
+    if (stratItems.length) {
+      html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">
+        ${stratItems.map(([lbl,val],i)=>`
+          <div class="strat-item ${i===0?'style="grid-column:1/-1"':''}" ${i===0?'style="grid-column:1/-1"':''}>
+            <div class="strat-label">${lbl}</div>
+            <div class="strat-text">${val}</div>
+          </div>`).join('')}
+      </div>`;
+    }
+
+    // Quick Wins
+    if ((recs.quick_wins||[]).length) {
+      html += `
+        <div style="margin-bottom:24px">
+          <div class="section-header" style="margin-bottom:14px">
+            <h2>Quick Wins (0–3 months)</h2><div class="section-line"></div>
+          </div>
+          <div class="qw-list">
+            ${recs.quick_wins.map((w,i)=>`
+              <div class="qw-item">
+                <div class="qw-num">${i+1}</div>
+                <div class="qw-text">${w}</div>
+              </div>`).join('')}
+          </div>
+        </div>`;
+    }
+
+    // Roadmap
+    if ((recs.implementation_roadmap||[]).length) {
+      html += `
+        <div class="section-header">
+          <h2>Implementation Roadmap</h2><div class="section-line"></div>
         </div>
-      </div>`;
-  }
-
-  if (opps.length) {
-    html += `
-      <div class="competitor-deep-dive">
-        <h3 style="color:#ec4899">💡 Cơ Hội Thị Trường</h3>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          ${opps.map(o => `
-            <div style="background:rgba(236,72,153,0.1);padding:13px;border-radius:10px;border-left:4px solid #ec4899">
-              <div style="font-weight:600;color:#f472b6;margin-bottom:5px">${o.opportunity||''}</div>
-              <div style="font-size:12px;color:#94a3b8;margin-bottom:7px">${o.rationale||''}</div>
-              <div style="display:flex;gap:14px;font-size:11px">
-                <span style="color:#64748b">Doanh thu: <span style="color:#10b981;font-weight:600">${o.potential_revenue||'N/A'}</span></span>
-                <span style="color:#64748b">Độ khó: <span style="color:${o.difficulty==='Dễ'?'#10b981':o.difficulty==='Khó'?'#ef4444':'#f59e0b'};font-weight:600">${o.difficulty||'N/A'}</span></span>
-                <span style="color:#64748b">Ưu tiên: <span style="color:${o.priority==='Cao'?'#ef4444':'#f59e0b'};font-weight:600">${o.priority||'N/A'}</span></span>
+        <div class="roadmap">
+          ${recs.implementation_roadmap.map((ph,i)=>`
+            <div class="road-phase">
+              <div class="road-dot road-dot-${Math.min(i+1,3)}">${i+1}</div>
+              <div class="road-content">
+                <div class="road-phase-label">${ph.phase||'Phase '+(i+1)}</div>
+                ${ph.objective?`<div class="road-obj">Objective: ${ph.objective}</div>`:''}
+                <ul class="road-actions">
+                  ${(ph.actions||[]).map(a=>`<li>${a}</li>`).join('')}
+                </ul>
+                <div class="road-footer">
+                  ${ph.milestones?`<span class="road-kpi">◉ KPI: ${ph.milestones}</span>`:''}
+                  ${ph.investment_required?`<span class="road-invest">$ ${ph.investment_required}</span>`:''}
+                </div>
               </div>
             </div>`).join('')}
-        </div>
+        </div>`;
+    }
+  }
+
+  // ── Market Opportunities
+  if (opps.length) {
+    html += `
+      <div class="section-header">
+        <h2>Market Opportunities</h2><div class="section-line"></div>
+      </div>
+      <div class="opp-grid">
+        ${opps.map(o=>{
+          const prioClass = o.priority==='Cao'||o.priority==='High' ? 'opp-high' :
+                            o.priority==='Trung bình'||o.priority==='Medium' ? 'opp-med' : 'opp-low';
+          const diffClass = o.difficulty==='Khó'||o.difficulty==='Hard' ? 'opp-hard' :
+                            o.difficulty==='Dễ'||o.difficulty==='Easy' ? 'opp-easy' : 'opp-med';
+          return `
+            <div class="opp-card">
+              <div>
+                <div class="opp-name">${o.opportunity||''}</div>
+                <div class="opp-rationale">${o.rationale||''}</div>
+                ${o.potential_impact||o.potential_revenue ? `
+                  <div style="font-size:11px;color:var(--accent3);margin-top:5px;font-family:var(--font-mono)">
+                    ↗ ${o.potential_impact||o.potential_revenue}
+                  </div>` : ''}
+                ${o.who_should_pursue ? `<div class="opp-who">→ ${o.who_should_pursue}</div>` : ''}
+              </div>
+              <div class="opp-tags">
+                <span class="opp-tag ${prioClass}">${o.priority||'–'}</span>
+                <span class="opp-tag ${diffClass}">${o.difficulty||'–'}</span>
+              </div>
+            </div>`;
+        }).join('')}
       </div>`;
   }
 
+  // ── Risks
   if (risks.length) {
     html += `
-      <div class="competitor-deep-dive" style="border:1px solid rgba(239,68,68,0.3)">
-        <h3 style="color:#ef4444">⚠️ Rủi Ro &amp; Giảm Thiểu</h3>
-        <ul style="margin-left:18px;color:#cbd5e1;font-size:13px;line-height:1.9">
-          ${risks.map(r=>`<li>${r}</li>`).join('')}
-        </ul>
+      <div class="section-header">
+        <h2>Risk Mitigation</h2><div class="section-line"></div>
+      </div>
+      <div class="risk-list">
+        ${risks.map(r=>{
+          if (typeof r === 'string') {
+            return `<div class="risk-row">
+              <span class="risk-impact Medium">MED</span>
+              <div class="risk-name">${r}</div>
+              <div></div>
+            </div>`;
+          }
+          const impact = r.impact||'Medium';
+          return `<div class="risk-row">
+            <span class="risk-impact ${impact}">${impact.toUpperCase().slice(0,3)}</span>
+            <div class="risk-name">${r.risk||r}</div>
+            <div class="risk-mit">${r.mitigation||''}</div>
+          </div>`;
+        }).join('')}
       </div>`;
   }
 
-  container.innerHTML = html;
+  // ── Competitive Intelligence Summary
+  if (Object.keys(intel).length) {
+    html += `
+      <div class="section-header">
+        <h2>Intelligence Summary</h2><div class="section-line"></div>
+      </div>
+      <div class="intel-grid" style="margin-bottom:24px">
+        ${[
+          ['🏆 Biggest Winner', intel.biggest_winner],
+          ['⚠ Biggest Threat', intel.biggest_threat],
+          ['💡 Hidden Gem', intel.hidden_gem],
+          ['⚔ Key Battleground', intel.key_battleground]
+        ].filter(([,v])=>v).map(([lbl,val])=>`
+          <div class="intel-card">
+            <div class="intel-label">${lbl}</div>
+            <div class="intel-val">${val}</div>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  main.innerHTML = html;
+
+  // Trigger score bar animations after render
+  setTimeout(() => {
+    document.querySelectorAll('.score-bar-fill').forEach(el => {
+      const w = el.style.width;
+      el.style.width = '0';
+      setTimeout(() => el.style.width = w, 50);
+    });
+    document.querySelectorAll('.rank-bar-fill').forEach(el => {
+      const w = el.style.width;
+      el.style.width = '0';
+      setTimeout(() => el.style.width = w, 50);
+    });
+    document.querySelectorAll('.confidence-fill').forEach(el => {
+      const w = el.style.width;
+      el.style.width = '0';
+      setTimeout(() => el.style.width = w, 50);
+    });
+  }, 100);
+}
+
+// ─── CHARTS ────────────────────────────────────────────
+function renderCharts(detailed, ids) {
+  const topN = detailed.slice(0, 5);
+  const labels = topN.map(d => (d.entity||d.bank||'').split(' ')[0]);
+  const colors = ['#00e5ff','#10b981','#a78bfa','#f59e0b','#f472b6'];
+
+  // Radar
+  const radarEl = document.getElementById(ids.radar);
+  if (radarEl) {
+    new Chart(radarEl, {
+      type: 'radar',
+      data: {
+        labels: ['Products', 'Digital', 'Pricing', 'Brand', 'CX', 'Innovation'],
+        datasets: topN.map((d,i) => ({
+          label: labels[i],
+          data: [
+            d.competitive_score?.product_breadth||5,
+            d.competitive_score?.digital_capability||5,
+            d.competitive_score?.pricing_competitiveness||5,
+            d.competitive_score?.brand_strength||5,
+            d.competitive_score?.customer_experience||5,
+            d.competitive_score?.innovation||5
+          ],
+          borderColor: colors[i],
+          backgroundColor: colors[i].replace(')', ',0.08)').replace('rgb', 'rgba').replace('#', ''),
+          borderWidth: 1.5,
+          pointRadius: 3,
+          pointBackgroundColor: colors[i]
+        }))
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#8896ab', font: { size: 10 }, boxWidth: 10 } } },
+        scales: {
+          r: {
+            min: 0, max: 10,
+            grid: { color: 'rgba(255,255,255,0.07)' },
+            angleLines: { color: 'rgba(255,255,255,0.07)' },
+            pointLabels: { color: '#8896ab', font: { size: 10 } },
+            ticks: { display: false, stepSize: 2 }
+          }
+        }
+      }
+    });
+  }
+
+  // Bar
+  const barEl = document.getElementById(ids.bar);
+  if (barEl) {
+    new Chart(barEl, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Overall Score',
+          data: topN.map(d => d.competitive_score?.overall || 0),
+          backgroundColor: topN.map((_,i) => colors[i] + '33'),
+          borderColor: topN.map((_,i) => colors[i]),
+          borderWidth: 1.5,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#8896ab', font: { size: 11 } } },
+          y: {
+            min: 0, max: 10,
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            ticks: { color: '#8896ab', font: { size: 10 } }
+          }
+        }
+      }
+    });
+  }
 }
 </script>
 </body>
