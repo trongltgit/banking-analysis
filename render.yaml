@@ -7,5 +7,5 @@ services:
     envVars:
       - key: PORT
         value: 10000
-      - key: ANTHROPIC_API_KEY
+      - key: GROQ_API_KEY_BK
         sync: false
