@@ -15,18 +15,22 @@ from typing import Optional
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-# ─── MODEL TIERS (tất cả FREE trên Groq) ───────────────────────────────────
-# Tier 1 — Ultra Deep Analysis (70B+ params, best reasoning)
-# ⚠️ Đã xóa model bị khai tử: llama-3.1-70b-versatile, mixtral-8x7b-32768,
-#    llama3-8b-8192 (decommissioned May 2025), llama3-70b-8192
+# ─── MODEL TIERS (tất cả FREE trên Groq, đã xác nhận hoạt động) ────────────
+# ⚠️ Đã khai tử / không có quyền free tier:
+#    llama3-8b-8192, llama3-70b-8192 (decommissioned May 2025)
+#    llama-3.1-70b-versatile, mixtral-8x7b-32768
+#    meta-llama/llama-4-maverick-17b-128e-instruct (cần trả phí)
+#    meta-llama/llama-4-scout-17b-16e-instruct (cần trả phí)
+
+# Tier 1 — Deep reasoning (dùng cho step 2 + master strategy)
 TIER1_MODELS = [
-    "llama-3.3-70b-versatile",
-    "meta-llama/llama-4-maverick-17b-128e-instruct",  # Llama 4 Maverick — strong reasoning
+    "llama-3.3-70b-versatile",   # Model chính — mạnh nhất free tier
+    "qwen/qwen3-32b",             # Backup tier 1 — 32B, reasoning tốt, ít bị rate limit hơn
 ]
-# Tier 2 — Fast extraction (8B–17B params)
+# Tier 2 — Fast extraction (dùng cho step 1)
 TIER2_MODELS = [
-    "llama-3.1-8b-instant",
-    "meta-llama/llama-4-scout-17b-16e-instruct",      # Llama 4 Scout — fast + capable
+    "llama-3.1-8b-instant",       # Nhanh nhất, dùng cho extraction đơn giản
+    "qwen/qwen3-32b",             # Fallback khi 8b không đủ chất lượng
 ]
 ALL_MODELS = TIER1_MODELS + TIER2_MODELS
 
