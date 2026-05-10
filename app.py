@@ -149,7 +149,7 @@ def analyze():
             "entity_tiers": list(set(r.get("entity_tier", "unknown") for r in results)),
             "crawl_errors": crawl_errors,
             "ai_pipeline": "chain-of-thought-2step",
-            "models_used": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
+            "models_used": ["llama-3.3-70b-versatile", "meta-llama/llama-4-maverick-17b-128e-instruct", "llama-3.1-8b-instant", "meta-llama/llama-4-scout-17b-16e-instruct"],
         }
 
         response_data = {
