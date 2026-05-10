@@ -97,10 +97,6 @@ def call_ai_api(prompt, max_tokens=3000, retries=5, system_prompt=None,
             "max_tokens": max_tokens,
             "top_p": 0.95,
         }
-        # Qwen3 mặc định bật chế độ "thinking" → chèn <think>...</think> vào output
-        # → phá vỡ JSON parser. Tắt hẳn bằng tham số riêng của Groq.
-        if "qwen" in model.lower():
-            payload["thinking"] = {"type": "disabled"}
         try:
             print(f"  🧠 [{model}] attempt {attempt+1}/{retries}")
             res = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=90)
