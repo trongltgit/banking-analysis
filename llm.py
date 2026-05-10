@@ -15,39 +15,25 @@ from typing import Optional
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-# ─── MODEL TIERS (FREE trên Groq — chỉ model còn active) ──────────────────
-# ⚠️ ĐÃ XÓA model bị khai tử:
-#   - llama-3.1-70b-versatile  (decommissioned → lỗi 400)
-#   - mixtral-8x7b-32768       (decommissioned → lỗi 400)
-
-# Tier 1 — Phân tích sâu (70B params)
+# ─── MODEL TIERS (tất cả FREE trên Groq) ───────────────────────────────────
+# Tier 1 — Ultra Deep Analysis (70B params, best reasoning)
+# ⚠️ Đã xóa model bị khai tử: llama-3.1-70b-versatile, mixtral-8x7b-32768
 TIER1_MODELS = [
-    "llama-3.3-70b-versatile",    # Model mạnh nhất còn active
+    "llama-3.3-70b-versatile",
 ]
-# Tier 2 — Nhanh (extraction, classification)
 TIER2_MODELS = [
     "llama-3.1-8b-instant",
     "gemma2-9b-it",
 ]
 ALL_MODELS = TIER1_MODELS + TIER2_MODELS
 
-# Thời gian sleep tối đa (giây) — KHÔNG BAO GIỜ vượt gunicorn timeout
-# gunicorn timeout = 300s, đặt cap = 55s để còn buffer xử lý
+# Cap sleep để không vượt gunicorn timeout (300s)
 MAX_RATE_LIMIT_SLEEP = 55
 
 # ─── EXPERT PERSONAS ────────────────────────────────────────────────────────
-EXPERT_BANKING_SYSTEM = """You are a Senior Banking Intelligence Analyst with 20+ years experience at:
-- Goldman Sachs Investment Banking Division
-- McKinsey Financial Services Practice
-- IMF Financial Sector Assessment Program (FSAP)
-- Basel Committee on Banking Supervision
+EXPERT_BANKING_SYSTEM = """You are a Senior Banking Intelligence Analyst with 20+ years experience at Goldman Sachs, McKinsey Financial Services, IMF FSAP, and Basel Committee on Banking Supervision.
 
-Your analytical framework combines:
-1. CAMELS Rating System (Capital, Assets, Management, Earnings, Liquidity, Sensitivity)
-2. Porter Five Forces for competitive dynamics
-3. BCG Growth-Share Matrix for product portfolio analysis
-4. SWOT + TOWS Strategic Matrix
-5. Digital Maturity Model (DMM) assessment
+Your analytical framework: CAMELS Rating System, Porter Five Forces, BCG Growth-Share Matrix, SWOT + TOWS Strategic Matrix, Digital Maturity Model (DMM).
 
 You ALWAYS:
 - Provide quantitative scoring (1-10) with clear rationale
@@ -56,28 +42,19 @@ You ALWAYS:
 - Compare against global best practices (JPMorgan, DBS, Nubank benchmarks)
 - Output ONLY valid JSON, no markdown, no text outside JSON
 - Never fabricate data not present in source material
-- Write ALL text values in VIETNAMESE (Tiếng Việt). JSON keys stay in snake_case English.
-All JSON keys use snake_case."""
+- Write ALL text values in VIETNAMESE (Tiếng Việt). JSON keys stay in snake_case English."""
 
 EXPERT_STRATEGY_SYSTEM = """You are the Head of Strategy at a top-tier global consultancy (McKinsey x Bain x BCG trained).
-Your specialty: Financial Services Competitive Intelligence for Asia-Pacific banking sector.
+Specialty: Financial Services Competitive Intelligence for Asia-Pacific banking sector.
 
-Standards:
-- Every claim evidence-based from provided data
-- Strategic recommendations follow MECE principle
-- Risk assessments use 3x3 impact/probability matrix
-- Benchmarks: Techcombank (tech leader), VCB (brand leader), VPBank (growth leader)
-- Write ALL text values in VIETNAMESE (Tiếng Việt). JSON keys in snake_case English.
+Standards: every claim evidence-based, MECE principle, 3x3 risk matrix.
+Benchmarks: Techcombank (tech leader), VCB (brand leader), VPBank (growth leader).
+Write ALL text values in VIETNAMESE (Tiếng Việt). JSON keys in snake_case English.
 Output ONLY valid JSON. No preamble. No markdown."""
 
 EXPERT_EXTRACTION_SYSTEM = """You are a Precision Data Extraction Engine for financial services.
-Rules:
-1. Extract ONLY data explicitly present in source text
-2. Never hallucinate product details
-3. Map products to standard banking categories with precision
-4. Identify pricing signals with exact figures when available
-5. Flag data confidence based on information density
-6. Write ALL text values in VIETNAMESE (Tiếng Việt). JSON keys stay in English.
+Rules: extract ONLY data present in source, no hallucination, map to standard banking categories, flag data confidence.
+Write ALL text values in VIETNAMESE (Tiếng Việt). JSON keys in English.
 Output ONLY valid JSON. Zero tolerance for markdown."""
 
 
@@ -118,14 +95,12 @@ def call_ai_api(prompt, max_tokens=3000, retries=5, system_prompt=None,
             res = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=90)
 
             if res.status_code == 429:
-                    raw_wait = int(res.headers.get("Retry-After", 0))
-                    # ⚠️ CAP SLEEP: Groq đôi khi trả về 1500s+ nhưng gunicorn timeout = 300s
-                    # → Không chờ quá MAX_RATE_LIMIT_SLEEP, đổi sang model khác ngay
-                    wait = min(max(raw_wait, 12 * (attempt + 1)), MAX_RATE_LIMIT_SLEEP)
-                    print(f"  ⏳ Rate limit (server yêu cầu {raw_wait}s) → chờ {wait}s rồi đổi model...")
-                    time.sleep(wait)
-                    last_error = f"Rate limit on {model}"
-                    continue
+                raw_wait = int(res.headers.get("Retry-After", 0))
+                wait = min(max(raw_wait, 12 * (attempt + 1)), MAX_RATE_LIMIT_SLEEP)
+                print(f"  ⏳ Rate limit (server yêu cầu {raw_wait}s) → chờ {wait}s rồi đổi model...")
+                time.sleep(wait)
+                last_error = f"Rate limit on {model}"
+                continue
             if res.status_code in [404, 400]:
                 resp_j = res.json() if res.content else {}
                 err = resp_j.get("error", {}).get("message", "")
@@ -149,14 +124,14 @@ def call_ai_api(prompt, max_tokens=3000, retries=5, system_prompt=None,
             return content
 
         except requests.exceptions.Timeout:
-                time.sleep(min(8 * (attempt + 1), MAX_RATE_LIMIT_SLEEP))
-                last_error = f"Timeout on {model}"
-            except requests.exceptions.ConnectionError as e:
-                time.sleep(10)
-                last_error = str(e)
-            except Exception as e:
-                time.sleep(min(5 * (attempt + 1), MAX_RATE_LIMIT_SLEEP))
-                last_error = str(e)
+            time.sleep(min(8 * (attempt + 1), MAX_RATE_LIMIT_SLEEP))
+            last_error = f"Timeout on {model}"
+        except requests.exceptions.ConnectionError as e:
+            time.sleep(10)
+            last_error = str(e)
+        except Exception as e:
+            time.sleep(min(5 * (attempt + 1), MAX_RATE_LIMIT_SLEEP))
+            last_error = str(e)
 
     raise Exception(f"All {retries} attempts failed. Last: {last_error}")
 
