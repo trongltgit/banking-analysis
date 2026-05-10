@@ -21,9 +21,10 @@ GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 TIER1_MODELS = [
     "llama-3.3-70b-versatile",
 ]
+# ─── FIX 1: Đã xóa "gemma2-9b-it" (bị Groq khai tử) ───────────────────────
 TIER2_MODELS = [
     "llama-3.1-8b-instant",
-    "gemma2-9b-it",
+    "llama3-8b-8192",       # Thay thế cho gemma2-9b-it
 ]
 ALL_MODELS = TIER1_MODELS + TIER2_MODELS
 
@@ -202,6 +203,24 @@ def normalize_keys(obj):
     elif isinstance(obj, list):
         return [normalize_keys(i) for i in obj]
     return obj
+
+
+# ─── FIX 2: Helper để ép item trong list strengths/weaknesses thành str ──────
+def _coerce_str(item):
+    """
+    Strengths/weaknesses đôi khi là str, đôi khi là dict do model nhỏ trả sai schema.
+    Hàm này chuẩn hóa về str an toàn.
+    """
+    if isinstance(item, str):
+        return item
+    if isinstance(item, dict):
+        # Thử các key phổ biến theo thứ tự ưu tiên
+        for key in ("name", "text", "description", "title", "value", "content"):
+            if item.get(key):
+                return str(item[key])
+        # Fallback: ghép tất cả values
+        return "; ".join(str(v) for v in item.values() if v)
+    return str(item)
 
 
 # ─── CAMELS SCORING ENGINE ───────────────────────────────────────────────────
@@ -726,7 +745,10 @@ Deliver a deep competitive intelligence report. Return ONLY this JSON:
                     "entity": s.get("entity", ""),
                     "position": s.get("market_position", "N/A"),
                     "score": str(s.get("camels_scores", {}).get("overall", "N/A")),
-                    "key_strength": ", ".join(s.get("strengths", [])[:1]),
+                    # ─── FIX 2: dùng _coerce_str để xử lý strengths dạng dict ───
+                    "key_strength": ", ".join(
+                        _coerce_str(x) for x in s.get("strengths", [])[:1]
+                    ),
                     "analysis": s.get("positioning", ""),
                 }
                 for i, s in enumerate(enriched)
