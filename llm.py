@@ -152,6 +152,10 @@ def call_groq_api(prompt, model=None, max_tokens=1500, retries=3):
 def clean_json(text):
     if not text:
         return None
+    # Strip Qwen3 <think> blocks nếu còn sót
+    text = re.sub(r'<think>[\s\S]*?</think>', '', text, flags=re.IGNORECASE).strip()
+    if not text:
+        return None
     try:
         return json.loads(text)
     except Exception:
@@ -568,153 +572,80 @@ Vietnam Financial Services | {n} {ctx} analyzed
 ENRICHED DATA (with CAMELS + Digital Maturity pre-computed):
 {json.dumps(enriched, ensure_ascii=False, indent=2)}
 
-Deliver a deep competitive intelligence report. Return ONLY this JSON:
+Deliver a competitive intelligence report. Return ONLY valid JSON, no text outside:
 {{
-  "executive_summary": "4-5 sentence board-level insight: who is winning WHY (with specific evidence), critical battleground, most important strategic finding. Reference specific scores/products.",
+  "executive_summary": "3-4 câu tổng quan: ai đang dẫn đầu và tại sao, điểm cạnh tranh cốt lõi.",
 
   "market_overview": {{
     "total_entities_analyzed": {n},
-    "market_dynamics": "Specific competitive dynamics from data",
-    "key_trends": ["Data-backed trend 1", "Trend 2", "Trend 3"],
-    "disruption_factors": ["Specific disruption risk 1", "Factor 2"],
-    "critical_battleground": "Single most contested dimension"
+    "market_dynamics": "Động lực cạnh tranh chính",
+    "key_trends": ["Xu hướng 1", "Xu hướng 2", "Xu hướng 3"],
+    "disruption_factors": ["Yếu tố disruption 1", "Yếu tố 2"],
+    "critical_battleground": "Chiến trường cạnh tranh quan trọng nhất"
   }},
 
   "competitive_ranking": [
     {{
       "rank": 1,
-      "entity": "Entity name",
-      "position": "Specific market position",
+      "entity": "Tên tổ chức",
+      "position": "Vị thế thị trường",
       "score": "8.5",
       "camels_overall": "7.2",
       "digital_maturity_level": "Level 4 — Digital Accelerator",
-      "key_strength": "Most impactful strength with evidence",
-      "key_weakness": "Most critical weakness",
-      "analysis": "2-3 sentences on competitive position and trajectory"
-    }}
-  ],
-
-  "detailed_competitor_analysis": [
-    {{
-      "entity": "Entity name",
-      "entity_type": "bank/fintech/insurance",
-      "camels_profile": {{
-        "capital_adequacy": 7, "asset_quality": 6, "management": 8,
-        "earnings": 7, "liquidity": 7, "sensitivity": 6, "overall": 6.8
-      }},
-      "digital_maturity": {{
-        "overall_score": 7.2,
-        "level": "Level 4 — Digital Accelerator",
-        "strongest_dimension": "Which dimension leads",
-        "biggest_gap": "Which dimension lags"
-      }},
-      "product_strategy": "Product portfolio assessment: breadth vs. focus, mass vs. premium",
-      "pricing_strategy": "Specific pricing observations",
-      "distribution_strategy": "Channel mix and digital-physical balance",
-      "digital_strategy": "Specific digital capabilities and maturity",
-      "target_customer": "Primary customer segment(s)",
-      "competitive_score": {{
-        "product_breadth": 7, "digital_capability": 8, "pricing_competitiveness": 7,
-        "brand_strength": 8, "customer_experience": 7, "innovation": 6, "overall": 7
-      }},
-      "key_threats": ["Specific threat 1", "Threat 2"],
-      "key_opportunities": ["Specific opportunity 1", "Opportunity 2"],
-      "strategic_verdict": "2-sentence strategic assessment"
+      "key_strength": "Điểm mạnh nổi bật nhất",
+      "key_weakness": "Điểm yếu cần cải thiện",
+      "analysis": "Đánh giá vị thế và xu hướng 2-3 câu"
     }}
   ],
 
   "product_comparison_matrix": {{
-    "Danh mục Sản phẩm": {{"leader": "...", "ranking": ["1st: ...", "2nd: ..."], "gap_analysis": "..."}},
-    "Năng lực Digital": {{"leader": "...", "ranking": ["1st: ...", "2nd: ..."], "gap_analysis": "..."}},
-    "Chiến lược Giá": {{"leader": "...", "ranking": ["1st: ...", "2nd: ..."], "gap_analysis": "..."}},
-    "Phân khúc KH": {{"leader": "...", "ranking": ["1st: ...", "2nd: ..."], "gap_analysis": "..."}},
-    "Đổi mới sáng tạo": {{"leader": "...", "ranking": ["1st: ...", "2nd: ..."], "gap_analysis": "..."}}
+    "Danh mục Sản phẩm": {{"leader": "...", "ranking": ["1: ...", "2: ..."], "gap_analysis": "..."}},
+    "Năng lực Digital": {{"leader": "...", "ranking": ["1: ...", "2: ..."], "gap_analysis": "..."}},
+    "Chiến lược Giá": {{"leader": "...", "ranking": ["1: ...", "2: ..."], "gap_analysis": "..."}},
+    "Phân khúc KH": {{"leader": "...", "ranking": ["1: ...", "2: ..."], "gap_analysis": "..."}},
+    "Đổi mới": {{"leader": "...", "ranking": ["1: ...", "2: ..."], "gap_analysis": "..."}}
   }},
 
   "strategic_recommendations": {{
-    "overall_strategy": "Single most important strategic imperative",
-    "product_strategy": "Specific product moves: build/buy/kill",
-    "pricing_strategy": "Specific pricing repositioning",
-    "distribution_strategy": "Channel optimization",
-    "digital_strategy": "3-step digital transformation roadmap",
-    "quick_wins": [
-      "0-30 days: Specific action + expected outcome",
-      "30-60 days: Specific action",
-      "60-90 days: Specific action"
-    ],
+    "overall_strategy": "Ưu tiên chiến lược quan trọng nhất",
+    "product_strategy": "Hướng phát triển sản phẩm: build/buy/kill",
+    "digital_strategy": "Lộ trình digital 3 bước",
+    "quick_wins": ["0-30 ngày: Hành động cụ thể", "30-60 ngày: ...", "60-90 ngày: ..."],
     "implementation_roadmap": [
-      {{
-        "phase": "Phase 1: Foundation (Q1-Q2)",
-        "objective": "Specific measurable objective",
-        "actions": ["Concrete action 1", "Action 2", "Action 3"],
-        "milestones": "KPI: [metric] = [target] by [date]",
-        "investment_required": "Resource estimate"
-      }},
-      {{
-        "phase": "Phase 2: Acceleration (Q3-Q4)",
-        "objective": "Objective",
-        "actions": ["Action 1", "Action 2"],
-        "milestones": "KPIs",
-        "investment_required": "Resources"
-      }},
-      {{
-        "phase": "Phase 3: Leadership (Year 2)",
-        "objective": "Long-term goal",
-        "actions": ["Action 1", "Action 2"],
-        "milestones": "Long-term KPIs",
-        "investment_required": "Investment level"
-      }}
+      {{"phase": "Phase 1 (Q1-Q2)", "objective": "Mục tiêu đo lường được", "actions": ["Hành động 1", "Hành động 2"], "milestones": "KPI cụ thể"}},
+      {{"phase": "Phase 2 (Q3-Q4)", "objective": "Mục tiêu", "actions": ["Hành động 1", "Hành động 2"], "milestones": "KPIs"}},
+      {{"phase": "Phase 3 (Năm 2)", "objective": "Mục tiêu dài hạn", "actions": ["Hành động 1", "Hành động 2"], "milestones": "KPIs dài hạn"}}
     ]
   }},
 
   "market_opportunities": [
-    {{
-      "opportunity": "Specific opportunity",
-      "rationale": "Gap in competitive landscape",
-      "potential_impact": "Quantified impact",
-      "difficulty": "Easy/Medium/Hard",
-      "priority": "High/Medium/Low",
-      "time_to_capture": "Timeline",
-      "who_should_pursue": "Best positioned entity type"
-    }}
+    {{"opportunity": "Cơ hội cụ thể", "rationale": "Lý do", "potential_impact": "Tác động", "priority": "High/Medium/Low", "time_to_capture": "Timeline"}}
   ],
 
   "risk_mitigation": [
-    {{
-      "risk": "Specific risk",
-      "probability": "High/Medium/Low",
-      "impact": "High/Medium/Low",
-      "risk_score": "H/M/L",
-      "mitigation": "Specific mitigation action"
-    }}
+    {{"risk": "Rủi ro cụ thể", "probability": "High/Medium/Low", "impact": "High/Medium/Low", "mitigation": "Biện pháp"}}
   ],
 
   "competitive_intelligence_summary": {{
-    "biggest_winner": "Entity + specific reasons",
-    "biggest_threat": "Entity + why dangerous",
-    "hidden_gem": "Underrated entity + specific potential",
-    "key_battleground": "Critical competitive dimension",
-    "strategic_imperative": "Single most important action in next 6 months"
-  }},
-
-  "camels_leaderboard": [
-    {{
-      "entity": "Entity name",
-      "camels_overall": 7.5,
-      "digital_maturity": 6.8,
-      "composite_score": 7.2,
-      "strategic_tier": "Tier 1 Leader / Tier 2 Challenger / Tier 3 Follower"
-    }}
-  ]
+    "biggest_winner": "Tổ chức dẫn đầu + lý do cụ thể",
+    "biggest_threat": "Mối đe dọa lớn nhất + tại sao",
+    "hidden_gem": "Tổ chức tiềm năng bị đánh giá thấp",
+    "key_battleground": "Chiến trường cạnh tranh cốt lõi",
+    "strategic_imperative": "Hành động quan trọng nhất trong 6 tháng tới"
+  }}
 }}"""
 
     try:
         print("\n🎯 Master Strategy Analysis (70B deep reasoning)...")
-        content = call_ai_api(prompt, max_tokens=4000, retries=4,
+        content = call_ai_api(prompt, max_tokens=6000, retries=4,
                               system_prompt=EXPERT_STRATEGY_SYSTEM,
                               tier="ultra", temperature=0.1)
+        # Debug: log 200 chars cuối để phát hiện JSON bị cắt
+        print(f"  📋 Strategy raw tail: {repr(content[-200:])}")
         strategy = clean_json(content)
         if not strategy:
+            # Thử salvage: tìm JSON hợp lệ nhất có thể trong content
+            print(f"  ⚠️ clean_json failed on {len(content)} chars. First 300: {content[:300]}")
             raise Exception("Cannot parse strategy JSON")
 
         # Always inject computed scores into leaderboard
