@@ -15,19 +15,25 @@ from typing import Optional
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-# ─── MODEL TIERS (tất cả FREE trên Groq) ───────────────────────────────────
-# Tier 1 — Ultra Deep Analysis (70B params, best reasoning)
+# ─── MODEL TIERS (FREE trên Groq — chỉ model còn active) ──────────────────
+# ⚠️ ĐÃ XÓA model bị khai tử:
+#   - llama-3.1-70b-versatile  (decommissioned → lỗi 400)
+#   - mixtral-8x7b-32768       (decommissioned → lỗi 400)
+
+# Tier 1 — Phân tích sâu (70B params)
 TIER1_MODELS = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-70b-versatile",
+    "llama-3.3-70b-versatile",    # Model mạnh nhất còn active
 ]
-# Tier 2 — Fast Intelligence (extraction, classification)
+# Tier 2 — Nhanh (extraction, classification)
 TIER2_MODELS = [
     "llama-3.1-8b-instant",
     "gemma2-9b-it",
-    "mixtral-8x7b-32768",
 ]
 ALL_MODELS = TIER1_MODELS + TIER2_MODELS
+
+# Thời gian sleep tối đa (giây) — KHÔNG BAO GIỜ vượt gunicorn timeout
+# gunicorn timeout = 300s, đặt cap = 55s để còn buffer xử lý
+MAX_RATE_LIMIT_SLEEP = 55
 
 # ─── EXPERT PERSONAS ────────────────────────────────────────────────────────
 EXPERT_BANKING_SYSTEM = """You are a Senior Banking Intelligence Analyst with 20+ years experience at:
@@ -50,6 +56,7 @@ You ALWAYS:
 - Compare against global best practices (JPMorgan, DBS, Nubank benchmarks)
 - Output ONLY valid JSON, no markdown, no text outside JSON
 - Never fabricate data not present in source material
+- Write ALL text values in VIETNAMESE (Tiếng Việt). JSON keys stay in snake_case English.
 All JSON keys use snake_case."""
 
 EXPERT_STRATEGY_SYSTEM = """You are the Head of Strategy at a top-tier global consultancy (McKinsey x Bain x BCG trained).
@@ -60,6 +67,7 @@ Standards:
 - Strategic recommendations follow MECE principle
 - Risk assessments use 3x3 impact/probability matrix
 - Benchmarks: Techcombank (tech leader), VCB (brand leader), VPBank (growth leader)
+- Write ALL text values in VIETNAMESE (Tiếng Việt). JSON keys in snake_case English.
 Output ONLY valid JSON. No preamble. No markdown."""
 
 EXPERT_EXTRACTION_SYSTEM = """You are a Precision Data Extraction Engine for financial services.
@@ -69,6 +77,7 @@ Rules:
 3. Map products to standard banking categories with precision
 4. Identify pricing signals with exact figures when available
 5. Flag data confidence based on information density
+6. Write ALL text values in VIETNAMESE (Tiếng Việt). JSON keys stay in English.
 Output ONLY valid JSON. Zero tolerance for markdown."""
 
 
@@ -109,11 +118,14 @@ def call_ai_api(prompt, max_tokens=3000, retries=5, system_prompt=None,
             res = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=90)
 
             if res.status_code == 429:
-                wait = max(int(res.headers.get("Retry-After", 0)), 12 * (attempt + 1))
-                print(f"  ⏳ Rate limit, switching model in {wait}s...")
-                time.sleep(wait)
-                last_error = f"Rate limit on {model}"
-                continue
+                    raw_wait = int(res.headers.get("Retry-After", 0))
+                    # ⚠️ CAP SLEEP: Groq đôi khi trả về 1500s+ nhưng gunicorn timeout = 300s
+                    # → Không chờ quá MAX_RATE_LIMIT_SLEEP, đổi sang model khác ngay
+                    wait = min(max(raw_wait, 12 * (attempt + 1)), MAX_RATE_LIMIT_SLEEP)
+                    print(f"  ⏳ Rate limit (server yêu cầu {raw_wait}s) → chờ {wait}s rồi đổi model...")
+                    time.sleep(wait)
+                    last_error = f"Rate limit on {model}"
+                    continue
             if res.status_code in [404, 400]:
                 resp_j = res.json() if res.content else {}
                 err = resp_j.get("error", {}).get("message", "")
@@ -137,14 +149,14 @@ def call_ai_api(prompt, max_tokens=3000, retries=5, system_prompt=None,
             return content
 
         except requests.exceptions.Timeout:
-            time.sleep(8 * (attempt + 1))
-            last_error = f"Timeout on {model}"
-        except requests.exceptions.ConnectionError as e:
-            time.sleep(10)
-            last_error = str(e)
-        except Exception as e:
-            time.sleep(5 * (attempt + 1))
-            last_error = str(e)
+                time.sleep(min(8 * (attempt + 1), MAX_RATE_LIMIT_SLEEP))
+                last_error = f"Timeout on {model}"
+            except requests.exceptions.ConnectionError as e:
+                time.sleep(10)
+                last_error = str(e)
+            except Exception as e:
+                time.sleep(min(5 * (attempt + 1), MAX_RATE_LIMIT_SLEEP))
+                last_error = str(e)
 
     raise Exception(f"All {retries} attempts failed. Last: {last_error}")
 
